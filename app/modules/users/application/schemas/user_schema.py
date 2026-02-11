@@ -92,6 +92,7 @@ class UserReadGeneralDTO(BaseModel):
     id: UUID
     names: Optional[str] = None
     lastnames: Optional[str] = None
+    role: Optional[UserRole] = None
     created_at: datetime
     created_by: Optional[str] = None
     updated_at: datetime

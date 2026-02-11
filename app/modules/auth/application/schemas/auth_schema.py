@@ -19,6 +19,7 @@ class UserInfoDTO(BaseModel):
     email: Optional[EmailStr] = None
     profile_image: Optional[str] = None
     document_number: Optional[str] = None
+    role: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
