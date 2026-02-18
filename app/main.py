@@ -7,6 +7,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.core.settings import get_settings
 
@@ -16,6 +17,7 @@ from app.modules.users.adapters.router import router as user_router
 from app.modules.coin.adapters.router import router as coin_router
 from app.modules.transactions.adapters.router import router as transaction_router
 from app.modules.integraciones.adapters.router import router as integraciones_router
+from app.modules.home_banner.adapters.router import router as home_banner_router
 
 settings = get_settings()
 
@@ -87,12 +89,19 @@ app.add_middleware(
 # Middleware de auth desactivado por el momento (sin tokens)
 # app.add_middleware(TokenAuthMiddleware)
 
+# Archivos estáticos (imágenes, etc.)
+from pathlib import Path
+_media_path = Path("media")
+if _media_path.exists():
+    app.mount("/media", StaticFiles(directory="media"), name="media")
+
 # Incluir routers
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(coin_router)
 app.include_router(transaction_router)
 app.include_router(integraciones_router)
+app.include_router(home_banner_router)
 
 @app.get("/")
 async def root():

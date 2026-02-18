@@ -1,0 +1,70 @@
+"""Casos de uso CRUD para HomeBanner (solo GET, POST, PUT)."""
+from uuid import UUID
+from typing import List, Optional
+
+from app.modules.home_banner.domain.models import HomeBanner
+from app.modules.home_banner.interfaces.home_banner_repository import HomeBannerRepositoryInterface
+from app.modules.home_banner.application.schemas.home_banner_schema import (
+    HomeBannerCreateCmd,
+    HomeBannerUpdateCmd,
+    HomeBannerReadDTO,
+)
+
+
+class GetHomeBannerByIdUseCase:
+    def __init__(self, repo: HomeBannerRepositoryInterface):
+        self.repo = repo
+
+    async def execute(self, home_banner_id: UUID) -> Optional[HomeBannerReadDTO]:
+        entity = await self.repo.get(home_banner_id)
+        if not entity:
+            return None
+        return HomeBannerReadDTO.model_validate(entity)
+
+
+class ListHomeBannersUseCase:
+    def __init__(self, repo: HomeBannerRepositoryInterface):
+        self.repo = repo
+
+    async def execute(self) -> List[HomeBannerReadDTO]:
+        items = await self.repo.list()
+        return [HomeBannerReadDTO.model_validate(x) for x in items]
+
+
+class CreateHomeBannerUseCase:
+    def __init__(self, repo: HomeBannerRepositoryInterface):
+        self.repo = repo
+
+    async def execute(self, cmd: HomeBannerCreateCmd) -> HomeBannerReadDTO:
+        entity = HomeBanner(
+            banner_es=cmd.banner_es,
+            banner_pr=cmd.banner_pr,
+            banner_en=cmd.banner_en,
+            enable=cmd.enable,
+        )
+        saved = await self.repo.add(entity)
+        await self.repo.commit()
+        await self.repo.refresh(saved)
+        return HomeBannerReadDTO.model_validate(saved)
+
+
+class UpdateHomeBannerUseCase:
+    def __init__(self, repo: HomeBannerRepositoryInterface):
+        self.repo = repo
+
+    async def execute(self, cmd: HomeBannerUpdateCmd) -> Optional[HomeBannerReadDTO]:
+        entity = await self.repo.get(cmd.id)
+        if not entity:
+            return None
+        if cmd.banner_es is not None:
+            entity.banner_es = cmd.banner_es
+        if cmd.banner_pr is not None:
+            entity.banner_pr = cmd.banner_pr
+        if cmd.banner_en is not None:
+            entity.banner_en = cmd.banner_en
+        if cmd.enable is not None:
+            entity.enable = cmd.enable
+        await self.repo.update(entity)
+        await self.repo.commit()
+        await self.repo.refresh(entity)
+        return HomeBannerReadDTO.model_validate(entity)
