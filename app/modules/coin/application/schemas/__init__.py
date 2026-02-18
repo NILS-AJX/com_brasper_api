@@ -15,6 +15,13 @@ from app.modules.coin.application.schemas.commission_schema import (
     CommissionUpdateCmd,
     CommissionReadDTO,
 )
+from app.modules.coin.application.schemas.commission_trial_schema import (
+    CommissionTrialCreateCmd,
+    CommissionTrialUpdateCmd,
+    CommissionTrialReadDTO,
+)
+from app.modules.coin.application.schemas.tax_rate_history_schema import TaxRateHistoryReadDTO
+from app.modules.coin.application.schemas.commission_history_schema import CommissionHistoryReadDTO
 
 __all__ = [
     "CurrencyReadDTO",
@@ -27,4 +34,9 @@ __all__ = [
     "CommissionCreateCmd",
     "CommissionUpdateCmd",
     "CommissionReadDTO",
+    "CommissionTrialCreateCmd",
+    "CommissionTrialUpdateCmd",
+    "CommissionTrialReadDTO",
+    "TaxRateHistoryReadDTO",
+    "CommissionHistoryReadDTO",
 ]

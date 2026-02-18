@@ -12,7 +12,14 @@ from app.modules.auth.domain.models import AuthModel
 from app.modules.users.domain.models import User
 
 # Coin models
-from app.modules.coin.domain.models import TaxRate, TaxRateTrial, Commission
+from app.modules.coin.domain.models import (
+    TaxRate,
+    TaxRateTrial,
+    Commission,
+    CommissionTrial,
+    TaxRateHistory,
+    CommissionHistory,
+)
 
 # Transaction models
 from app.modules.transactions.domain.models import Transaction, Bank, BankAccount, Coupon
