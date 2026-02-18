@@ -9,12 +9,14 @@ from app.db.base import get_db
 from app.modules.coin.interfaces.tax_rate_repository import TaxRateRepositoryInterface
 from app.modules.coin.interfaces.tax_rate_trial_repository import TaxRateTrialRepositoryInterface
 from app.modules.coin.interfaces.commission_repository import CommissionRepositoryInterface
+from app.modules.coin.interfaces.commission_trial_repository import CommissionTrialRepositoryInterface
 from app.modules.coin.interfaces.tax_rate_history_repository import TaxRateHistoryRepositoryInterface
 from app.modules.coin.interfaces.commission_history_repository import CommissionHistoryRepositoryInterface
 from app.modules.coin.infrastructure.repository import (
     SQLAlchemyTaxRateRepository,
     SQLAlchemyTaxRateTrialRepository,
     SQLAlchemyCommissionRepository,
+    SQLAlchemyCommissionTrialRepository,
     SQLAlchemyTaxRateHistoryRepository,
     SQLAlchemyCommissionHistoryRepository,
 )
@@ -36,6 +38,11 @@ from app.modules.coin.application.use_cases import (
     CreateCommissionUseCase,
     UpdateCommissionUseCase,
     DeleteCommissionUseCase,
+    GetCommissionTrialByIdUseCase,
+    ListCommissionTrialsUseCase,
+    CreateCommissionTrialUseCase,
+    UpdateCommissionTrialUseCase,
+    DeleteCommissionTrialUseCase,
 )
 
 
@@ -51,6 +58,12 @@ def get_commission_repository(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CommissionRepositoryInterface:
     return SQLAlchemyCommissionRepository(db)
+
+
+def get_commission_trial_repository(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> CommissionTrialRepositoryInterface:
+    return SQLAlchemyCommissionTrialRepository(db)
 
 
 def get_tax_rate_history_repository(
@@ -144,6 +157,38 @@ def delete_tax_rate_trial_uc(
     return DeleteTaxRateTrialUseCase(repo)
 
 
+# --- CommissionTrial (comisión prueba): repositorio y factories ---
+
+def get_commission_trial_by_id_uc(
+    repo: Annotated[CommissionTrialRepositoryInterface, Depends(get_commission_trial_repository)],
+) -> GetCommissionTrialByIdUseCase:
+    return GetCommissionTrialByIdUseCase(repo)
+
+
+def list_commission_trials_uc(
+    repo: Annotated[CommissionTrialRepositoryInterface, Depends(get_commission_trial_repository)],
+) -> ListCommissionTrialsUseCase:
+    return ListCommissionTrialsUseCase(repo)
+
+
+def create_commission_trial_uc(
+    repo: Annotated[CommissionTrialRepositoryInterface, Depends(get_commission_trial_repository)],
+) -> CreateCommissionTrialUseCase:
+    return CreateCommissionTrialUseCase(repo)
+
+
+def update_commission_trial_uc(
+    repo: Annotated[CommissionTrialRepositoryInterface, Depends(get_commission_trial_repository)],
+) -> UpdateCommissionTrialUseCase:
+    return UpdateCommissionTrialUseCase(repo)
+
+
+def delete_commission_trial_uc(
+    repo: Annotated[CommissionTrialRepositoryInterface, Depends(get_commission_trial_repository)],
+) -> DeleteCommissionTrialUseCase:
+    return DeleteCommissionTrialUseCase(repo)
+
+
 # --- Commission: factories de casos de uso ---
 
 def get_commission_by_id_uc(
@@ -199,6 +244,11 @@ ListTaxRateTrialsUseCaseDep = Annotated[ListTaxRateTrialsUseCase, Depends(list_t
 CreateTaxRateTrialUseCaseDep = Annotated[CreateTaxRateTrialUseCase, Depends(create_tax_rate_trial_uc)]
 UpdateTaxRateTrialUseCaseDep = Annotated[UpdateTaxRateTrialUseCase, Depends(update_tax_rate_trial_uc)]
 DeleteTaxRateTrialUseCaseDep = Annotated[DeleteTaxRateTrialUseCase, Depends(delete_tax_rate_trial_uc)]
+GetCommissionTrialByIdUseCaseDep = Annotated[GetCommissionTrialByIdUseCase, Depends(get_commission_trial_by_id_uc)]
+ListCommissionTrialsUseCaseDep = Annotated[ListCommissionTrialsUseCase, Depends(list_commission_trials_uc)]
+CreateCommissionTrialUseCaseDep = Annotated[CreateCommissionTrialUseCase, Depends(create_commission_trial_uc)]
+UpdateCommissionTrialUseCaseDep = Annotated[UpdateCommissionTrialUseCase, Depends(update_commission_trial_uc)]
+DeleteCommissionTrialUseCaseDep = Annotated[DeleteCommissionTrialUseCase, Depends(delete_commission_trial_uc)]
 
 GetCommissionByIdUseCaseDep = Annotated[GetCommissionByIdUseCase, Depends(get_commission_by_id_uc)]
 ListCommissionsUseCaseDep = Annotated[ListCommissionsUseCase, Depends(list_commissions_uc)]
