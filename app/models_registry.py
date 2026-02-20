@@ -27,7 +27,7 @@ from app.modules.transactions.domain.models import Transaction, Bank, BankAccoun
 # Integration models
 from app.modules.integraciones.domain.models import Integration, SocialAccount
 
-# Home banner models
-from app.modules.home_banner.domain.models import HomeBanner
+# Home image models
+from app.modules.home_image.domain.models import HomeBanner, HomePopup
 
 print("  All SQLAlchemy models imported and registered successfully")

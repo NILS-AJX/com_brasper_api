@@ -5,6 +5,7 @@ from typing import Optional, List
 import logging
 
 from fastapi import UploadFile
+from sqlalchemy.exc import IntegrityError
 
 from app.core.unit_of_work import UnitOfWorkBase
 from app.modules.auth.application.use_cases import CreateAuthService
@@ -104,6 +105,14 @@ class CreateUserUseCase:
             saved = await self._uow.user_repository.get(saved.id)
             logger.info(f"Usuario creado: {saved.id}")
             return UserReadDTO.model_validate(saved)
+        except IntegrityError as e:
+            await self._uow.rollback()
+            err_msg = str(getattr(e, "orig", e))
+            if "document_number" in err_msg:
+                raise ValueError("Ya existe un usuario con este número de documento")
+            if "email" in err_msg:
+                raise ValueError("Ya existe un usuario con este email")
+            raise ValueError("Los datos ingresados ya existen para otro usuario") from e
         except Exception as e:
             await self._uow.rollback()
             raise e

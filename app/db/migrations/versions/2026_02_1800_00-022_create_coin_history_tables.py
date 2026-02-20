@@ -13,8 +13,8 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "022"
-down_revision: Union[str, None] = "021"
+revision: str = "024"
+down_revision: Union[str, None] = "023"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -25,7 +25,7 @@ def upgrade() -> None:
     op.execute(sa.text(f'CREATE schema IF NOT EXISTS "{schema}"'))
 
     op.execute(sa.text("""
-        CREATE TABLE coin.tax_rate_history (
+        CREATE TABLE IF NOT EXISTS coin.tax_rate_history (
             id UUID NOT NULL PRIMARY KEY,
             deleted BOOLEAN NOT NULL DEFAULT false,
             enable BOOLEAN NOT NULL DEFAULT true,
@@ -43,21 +43,11 @@ def upgrade() -> None:
                 FOREIGN KEY (tax_rate_id) REFERENCES coin.tax_rate(id)
         )
     """))
-    op.create_index(
-        op.f("ix_coin_tax_rate_history_tax_rate_id"),
-        "tax_rate_history",
-        ["tax_rate_id"],
-        schema=schema,
-    )
-    op.create_index(
-        op.f("ix_coin_tax_rate_history_changed_at"),
-        "tax_rate_history",
-        ["changed_at"],
-        schema=schema,
-    )
+    op.execute(sa.text('CREATE INDEX IF NOT EXISTS ix_coin_tax_rate_history_tax_rate_id ON coin.tax_rate_history (tax_rate_id)'))
+    op.execute(sa.text('CREATE INDEX IF NOT EXISTS ix_coin_tax_rate_history_changed_at ON coin.tax_rate_history (changed_at)'))
 
     op.execute(sa.text("""
-        CREATE TABLE coin.commission_history (
+        CREATE TABLE IF NOT EXISTS coin.commission_history (
             id UUID NOT NULL PRIMARY KEY,
             deleted BOOLEAN NOT NULL DEFAULT false,
             enable BOOLEAN NOT NULL DEFAULT true,
@@ -75,18 +65,8 @@ def upgrade() -> None:
                 FOREIGN KEY (commission_id) REFERENCES coin.commission(id)
         )
     """))
-    op.create_index(
-        op.f("ix_coin_commission_history_commission_id"),
-        "commission_history",
-        ["commission_id"],
-        schema=schema,
-    )
-    op.create_index(
-        op.f("ix_coin_commission_history_changed_at"),
-        "commission_history",
-        ["changed_at"],
-        schema=schema,
-    )
+    op.execute(sa.text('CREATE INDEX IF NOT EXISTS ix_coin_commission_history_commission_id ON coin.commission_history (commission_id)'))
+    op.execute(sa.text('CREATE INDEX IF NOT EXISTS ix_coin_commission_history_changed_at ON coin.commission_history (changed_at)'))
 
 
 def downgrade() -> None:

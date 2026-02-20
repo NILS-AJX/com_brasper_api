@@ -17,7 +17,7 @@ from app.modules.users.adapters.router import router as user_router
 from app.modules.coin.adapters.router import router as coin_router
 from app.modules.transactions.adapters.router import router as transaction_router
 from app.modules.integraciones.adapters.router import router as integraciones_router
-from app.modules.home_banner.adapters.router import router as home_banner_router
+from app.modules.home_image.adapters.router import router as home_banner_router
 
 settings = get_settings()
 

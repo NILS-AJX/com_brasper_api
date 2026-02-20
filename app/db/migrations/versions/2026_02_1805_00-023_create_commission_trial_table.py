@@ -11,8 +11,8 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "023"
-down_revision: Union[str, None] = "022"
+revision: str = "025"
+down_revision: Union[str, None] = "024"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -23,7 +23,7 @@ def upgrade() -> None:
     op.execute(sa.text(f'CREATE schema IF NOT EXISTS "{schema}"'))
 
     op.execute(sa.text("""
-        CREATE TABLE coin.commission_trial (
+        CREATE TABLE IF NOT EXISTS coin.commission_trial (
             id UUID NOT NULL PRIMARY KEY,
             deleted BOOLEAN NOT NULL DEFAULT false,
             enable BOOLEAN NOT NULL DEFAULT true,
@@ -39,18 +39,8 @@ def upgrade() -> None:
         )
     """))
 
-    op.create_index(
-        op.f("ix_coin_commission_trial_coin_a"),
-        "commission_trial",
-        ["coin_a"],
-        schema=schema,
-    )
-    op.create_index(
-        op.f("ix_coin_commission_trial_coin_b"),
-        "commission_trial",
-        ["coin_b"],
-        schema=schema,
-    )
+    op.execute(sa.text('CREATE INDEX IF NOT EXISTS ix_coin_commission_trial_coin_a ON coin.commission_trial (coin_a)'))
+    op.execute(sa.text('CREATE INDEX IF NOT EXISTS ix_coin_commission_trial_coin_b ON coin.commission_trial (coin_b)'))
 
 
 def downgrade() -> None:

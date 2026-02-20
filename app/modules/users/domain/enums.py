@@ -5,6 +5,7 @@ from typing import Dict
 
 class UserRole(str, enum.Enum):
     """Rol del usuario."""
+    user = "user"
     sales = "sales"
     admin = "admin"
     client = "client"

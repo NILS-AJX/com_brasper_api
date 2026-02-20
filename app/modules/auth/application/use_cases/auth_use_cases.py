@@ -102,7 +102,10 @@ class CreateAuthUseCase:
             raise ValueError("Username already exists")
 
         if not self.security_utils.is_password_strong(cmd.password):
-            raise ValueError("Password does not meet security requirements")
+            raise ValueError(
+                "La contraseña debe tener al menos 8 caracteres, "
+                "una mayúscula, una minúscula, un número y un carácter especial (!@#$%^&*())"
+            )
 
         hashed_password = self.security_utils.hash_password(cmd.password)
         credentials = Credentials(

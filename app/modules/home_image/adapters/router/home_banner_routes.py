@@ -4,12 +4,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, File, Form, HTTPException, status, UploadFile
 
-from app.modules.home_banner.application.schemas import (
+from app.modules.home_image.application.schemas import (
     HomeBannerCreateCmd,
     HomeBannerUpdateCmd,
     HomeBannerReadDTO,
 )
-from app.modules.home_banner.adapters.dependencies import (
+from app.modules.home_image.adapters.dependencies import (
     GetHomeBannerByIdUseCaseDep,
     ListHomeBannersUseCaseDep,
     CreateHomeBannerUseCaseDep,
@@ -17,7 +17,7 @@ from app.modules.home_banner.adapters.dependencies import (
 )
 from app.shared.services.file_service import save_home_banner_image
 
-router = APIRouter(prefix="", tags=["home-banner"])
+router = APIRouter(prefix="/home-image", tags=["home-banner"])
 
 
 @router.get("/", response_model=List[HomeBannerReadDTO])

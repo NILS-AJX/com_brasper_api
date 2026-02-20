@@ -2,9 +2,9 @@
 from uuid import UUID
 from typing import List, Optional
 
-from app.modules.home_banner.domain.models import HomeBanner
-from app.modules.home_banner.interfaces.home_banner_repository import HomeBannerRepositoryInterface
-from app.modules.home_banner.application.schemas.home_banner_schema import (
+from app.modules.home_image.domain.models import HomeBanner
+from app.modules.home_image.interfaces.home_banner_repository import HomeBannerRepositoryInterface
+from app.modules.home_image.application.schemas.home_banner_schema import (
     HomeBannerCreateCmd,
     HomeBannerUpdateCmd,
     HomeBannerReadDTO,

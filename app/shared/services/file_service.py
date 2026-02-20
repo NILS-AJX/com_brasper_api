@@ -25,6 +25,7 @@ class FileType(Enum):
     TEMPLATE_DOCUMENT = "template_documents"
     SCORE_FILE = "score_files"
     HOME_BANNER = "home_banner"
+    HOME_POPUP = "home_popup"
 
 
 # Extensiones permitidas para imágenes
@@ -122,6 +123,46 @@ async def save_home_banner_image(
 
 async def delete_home_banner_image(image_path: Optional[str]) -> bool:
     """Elimina imagen de banner home."""
+    if not image_path:
+        return False
+    return await file_service.delete_file(image_path)
+
+
+# ======================
+# Funciones para Home Popup
+# ======================
+
+async def save_home_popup_image(
+    popup_file: Optional[UploadFile],
+    lang: str,
+) -> Optional[str]:
+    """Guarda imagen de popup home (es/pr/en)."""
+    if not popup_file:
+        return None
+
+    file_content = await popup_file.read()
+    if not file_content:
+        return None
+
+    ext = Path(popup_file.filename or "").suffix.lower()
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise ValueError(
+            f"Extensión '{ext}' no permitida para popup. "
+            f"Permitidas: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}"
+        )
+
+    safe_lang = "".join(c for c in lang if c.isalnum() or c in "._-")[:5]
+    return await file_service.save_file(
+        file_content=file_content,
+        original_filename=popup_file.filename or "popup",
+        file_type=FileType.HOME_POPUP,
+        custom_prefix=f"popup_{safe_lang}",
+        allowed_extensions=ALLOWED_IMAGE_EXTENSIONS,
+    )
+
+
+async def delete_home_popup_image(image_path: Optional[str]) -> bool:
+    """Elimina imagen de popup home."""
     if not image_path:
         return False
     return await file_service.delete_file(image_path)
