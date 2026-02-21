@@ -26,6 +26,7 @@ class FileType(Enum):
     SCORE_FILE = "score_files"
     HOME_BANNER = "home_banner"
     HOME_POPUP = "home_popup"
+    TRANSACTION_VOUCHER = "transaction_vouchers"
 
 
 # Extensiones permitidas para imágenes

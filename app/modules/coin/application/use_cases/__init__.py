@@ -2,7 +2,6 @@
 from app.modules.coin.application.use_cases.tax_rate_use_cases import (
     GetTaxRateByIdUseCase,
     ListTaxRatesUseCase,
-    ListTaxRateHistoryUseCase,
     CreateTaxRateUseCase,
     UpdateTaxRateUseCase,
     DeleteTaxRateUseCase,
@@ -17,7 +16,6 @@ from app.modules.coin.application.use_cases.tax_rate_trial_use_cases import (
 from app.modules.coin.application.use_cases.commission_use_cases import (
     GetCommissionByIdUseCase,
     ListCommissionsUseCase,
-    ListCommissionHistoryUseCase,
     CreateCommissionUseCase,
     UpdateCommissionUseCase,
     DeleteCommissionUseCase,
@@ -33,7 +31,6 @@ from app.modules.coin.application.use_cases.commission_trial_use_cases import (
 __all__ = [
     "GetTaxRateByIdUseCase",
     "ListTaxRatesUseCase",
-    "ListTaxRateHistoryUseCase",
     "CreateTaxRateUseCase",
     "UpdateTaxRateUseCase",
     "DeleteTaxRateUseCase",
@@ -44,7 +41,6 @@ __all__ = [
     "DeleteTaxRateTrialUseCase",
     "GetCommissionByIdUseCase",
     "ListCommissionsUseCase",
-    "ListCommissionHistoryUseCase",
     "CreateCommissionUseCase",
     "UpdateCommissionUseCase",
     "DeleteCommissionUseCase",

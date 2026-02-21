@@ -7,12 +7,10 @@ from app.modules.coin.application.schemas import (
     CommissionCreateCmd,
     CommissionUpdateCmd,
     CommissionReadDTO,
-    CommissionHistoryReadDTO,
 )
 from app.modules.coin.adapters.dependencies import (
     GetCommissionByIdUseCaseDep,
     ListCommissionsUseCaseDep,
-    ListCommissionHistoryUseCaseDep,
     CreateCommissionUseCaseDep,
     UpdateCommissionUseCaseDep,
     DeleteCommissionUseCaseDep,
@@ -32,11 +30,6 @@ async def get_commission_by_id(commission_id: UUID, use_case: GetCommissionByIdU
     if not entity:
         raise HTTPException(status_code=404, detail="Comisión no encontrada")
     return entity
-
-
-@router.get("/{commission_id}/history", response_model=List[CommissionHistoryReadDTO])
-async def list_commission_history(commission_id: UUID, use_case: ListCommissionHistoryUseCaseDep):
-    return await use_case.execute(commission_id)
 
 
 @router.post("", response_model=CommissionReadDTO, status_code=status.HTTP_201_CREATED)

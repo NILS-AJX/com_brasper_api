@@ -7,12 +7,10 @@ from app.modules.coin.application.schemas import (
     TaxRateCreateCmd,
     TaxRateUpdateCmd,
     TaxRateReadDTO,
-    TaxRateHistoryReadDTO,
 )
 from app.modules.coin.adapters.dependencies import (
     GetTaxRateByIdUseCaseDep,
     ListTaxRatesUseCaseDep,
-    ListTaxRateHistoryUseCaseDep,
     CreateTaxRateUseCaseDep,
     UpdateTaxRateUseCaseDep,
     DeleteTaxRateUseCaseDep,
@@ -32,11 +30,6 @@ async def get_tax_rate_by_id(tax_rate_id: UUID, use_case: GetTaxRateByIdUseCaseD
     if not entity:
         raise HTTPException(status_code=404, detail="Tasa no encontrada")
     return entity
-
-
-@router.get("/{tax_rate_id}/history", response_model=List[TaxRateHistoryReadDTO])
-async def list_tax_rate_history(tax_rate_id: UUID, use_case: ListTaxRateHistoryUseCaseDep):
-    return await use_case.execute(tax_rate_id)
 
 
 @router.post("", response_model=TaxRateReadDTO, status_code=status.HTTP_201_CREATED)

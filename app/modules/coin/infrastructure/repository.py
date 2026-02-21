@@ -11,15 +11,11 @@ from app.modules.coin.domain.models import (
     TaxRateTrial,
     Commission,
     CommissionTrial,
-    TaxRateHistory,
-    CommissionHistory,
 )
 from app.modules.coin.interfaces.tax_rate_repository import TaxRateRepositoryInterface
 from app.modules.coin.interfaces.tax_rate_trial_repository import TaxRateTrialRepositoryInterface
 from app.modules.coin.interfaces.commission_repository import CommissionRepositoryInterface
 from app.modules.coin.interfaces.commission_trial_repository import CommissionTrialRepositoryInterface
-from app.modules.coin.interfaces.tax_rate_history_repository import TaxRateHistoryRepositoryInterface
-from app.modules.coin.interfaces.commission_history_repository import CommissionHistoryRepositoryInterface
 from app.shared.repositorie_base import BaseAsyncRepository
 
 
@@ -44,19 +40,3 @@ class SQLAlchemyCommissionTrialRepository(
 ):
     def __init__(self, db: AsyncSession):
         super().__init__(CommissionTrial, db)
-
-
-class SQLAlchemyTaxRateHistoryRepository(
-    BaseAsyncRepository[TaxRateHistory],
-    TaxRateHistoryRepositoryInterface,
-):
-    def __init__(self, db: AsyncSession):
-        super().__init__(TaxRateHistory, db)
-
-
-class SQLAlchemyCommissionHistoryRepository(
-    BaseAsyncRepository[CommissionHistory],
-    CommissionHistoryRepositoryInterface,
-):
-    def __init__(self, db: AsyncSession):
-        super().__init__(CommissionHistory, db)

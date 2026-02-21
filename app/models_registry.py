@@ -17,8 +17,6 @@ from app.modules.coin.domain.models import (
     TaxRateTrial,
     Commission,
     CommissionTrial,
-    TaxRateHistory,
-    CommissionHistory,
 )
 
 # Transaction models
