@@ -25,6 +25,12 @@ async def list_coupons(use_case: ListCouponsUseCaseDep):
     return await use_case.execute()
 
 
+@router.get("/automatic/", response_model=List[CouponReadDTO])
+async def list_automatic_coupons(use_case: ListCouponsUseCaseDep):
+    """Lista cupones activos y vigentes (para aplicación automática)."""
+    return await use_case.execute(automatic_only=True)
+
+
 @router.get("/{coupon_id}", response_model=CouponReadDTO)
 async def get_coupon_by_id(coupon_id: UUID, use_case: GetCouponByIdUseCaseDep):
     entity = await use_case.execute(coupon_id)

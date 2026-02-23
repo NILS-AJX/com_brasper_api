@@ -1,5 +1,5 @@
 # app/modules/users/adapters/router/user_routes.py
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status, File
 from uuid import UUID
 from typing import Annotated, List, Optional
 
@@ -14,7 +14,6 @@ from app.modules.users.application.schemas.user_schema import (
     UserReadDTO,
 )
 from app.modules.users.application.user_service import (
-    GetUserByIdUseCase,
     GetUserByEmailUseCase,
     GetUserByAuthIdUseCase,
     CreateUserUseCase,
@@ -25,7 +24,6 @@ from app.modules.users.application.user_service import (
     DeleteUserUseCase,
 )
 from app.core.container import (
-    get_user_by_id_uc,
     get_user_by_email_uc,
     get_user_by_auth_id_uc,
     create_user_uc,
@@ -37,17 +35,6 @@ from app.core.container import (
 )
 
 router = APIRouter(prefix="/user", tags=["user"])
-
-
-@router.get("/{user_id}", response_model=UserReadDTO)
-async def get_user_by_id(
-    user_id: UUID,
-    use_case: GetUserByIdUseCase = Depends(get_user_by_id_uc),
-):
-    user = await use_case.execute(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return user
 
 
 @router.get("/email/{email}", response_model=UserReadDTO)
@@ -105,18 +92,31 @@ async def delete_user(
 @router.get("/detail/", response_model=List[UserInfoDTO])
 async def list_users_with_details(
     use_case: ListUsersWithDetailsUseCase = Depends(list_users_with_details_uc),
+    user_id: Optional[UUID] = Query(None, description="Filtro por ID de usuario"),
+    role: Optional[str] = Query(None, description="Filtro por rol (user, sales, admin, client, etc.)"),
 ):
-    return await use_case.execute()
+    """Lista usuarios con detalles. Filtros: user_id, role."""
+    return await use_case.execute(user_id=user_id, role=role)
 
 
 @router.get("/", response_model=List[UserReadGeneralDTO])
 async def list_users(
     use_case: ListUserUseCase = Depends(list_users_uc),
+    user_id: Optional[UUID] = Query(None, description="Filtro por ID de usuario"),
+    role: Optional[str] = Query(None, description="Filtro por rol (user, sales, admin, client, etc.)"),
 ):
-    return await use_case.execute()
+    """Lista usuarios. Filtros: user_id, role. Si user_id no existe → 404."""
+    users = await use_case.execute(user_id=user_id, role=role)
+    if user_id is not None and not users:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return users
 
 
 @router.get("/name-list/", response_model=List[UserNameDTO])
-async def list_user_name(use_case: ListUserNameUseCase = Depends(list_user_name_uc)):
-    """Lista usuarios con id, names, lastnames (ordenados)."""
-    return await use_case.execute()
+async def list_user_name(
+    use_case: ListUserNameUseCase = Depends(list_user_name_uc),
+    user_id: Optional[UUID] = Query(None, description="Filtro por ID de usuario"),
+    role: Optional[str] = Query(None, description="Filtro por rol"),
+):
+    """Lista usuarios con id, names, lastnames. Filtros: user_id, role."""
+    return await use_case.execute(user_id=user_id, role=role)

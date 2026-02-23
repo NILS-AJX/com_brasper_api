@@ -187,13 +187,33 @@ class DeleteUserUseCase:
             raise e
 
 
+def _build_user_query_filter(
+    user_id: Optional[UUID] = None,
+    role: Optional[str] = None,
+):
+    """Construye QueryFilter para user_id y/o role."""
+    from app.shared.query_filter import FilterSchema, OperatorEnum, QueryFilter
+
+    filters = []
+    if user_id is not None:
+        filters.append(FilterSchema(field="id", value=user_id, operator=OperatorEnum.EQ))
+    if role is not None and str(role).strip():
+        filters.append(FilterSchema(field="role", value=role, operator=OperatorEnum.EQ))
+    return QueryFilter(filters=filters) if filters else None
+
+
 class ListUsersWithDetailsUseCase:
     def __init__(self, repo: UserRepositoryInterface):
         self.repo = repo
 
-    async def execute(self) -> List[UserInfoDTO]:
+    async def execute(
+        self,
+        user_id: Optional[UUID] = None,
+        role: Optional[str] = None,
+    ) -> List[UserInfoDTO]:
         try:
-            users = await self.repo.list()
+            query_filter = _build_user_query_filter(user_id=user_id, role=role)
+            users = await self.repo.list(query_filter=query_filter)
             return [UserInfoDTO.model_validate(user) for user in users]
         except Exception as e:
             await self.repo.rollback()
@@ -204,9 +224,14 @@ class ListUserUseCase:
     def __init__(self, repo: UserRepositoryInterface):
         self.repo = repo
 
-    async def execute(self) -> List[UserReadGeneralDTO]:
+    async def execute(
+        self,
+        user_id: Optional[UUID] = None,
+        role: Optional[str] = None,
+    ) -> List[UserReadGeneralDTO]:
         try:
-            users = await self.repo.list()
+            query_filter = _build_user_query_filter(user_id=user_id, role=role)
+            users = await self.repo.list(query_filter=query_filter)
             return [UserReadGeneralDTO.model_validate(user) for user in users]
         except Exception as e:
             await self.repo.rollback()
@@ -217,13 +242,22 @@ class ListUserNameUseCase:
     def __init__(self, repo: UserRepositoryInterface):
         self.repo = repo
 
-    async def execute(self) -> List[UserNameDTO]:
+    async def execute(
+        self,
+        user_id: Optional[UUID] = None,
+        role: Optional[str] = None,
+    ) -> List[UserNameDTO]:
         try:
             from app.shared.query_filter import FilterSchema, OperatorEnum, QueryFilter
+
             filters = [
                 FilterSchema(field="enable", value=True, operator=OperatorEnum.EQ),
                 FilterSchema(field="is_agent", value=True, operator=OperatorEnum.EQ),
             ]
+            if user_id is not None:
+                filters.append(FilterSchema(field="id", value=user_id, operator=OperatorEnum.EQ))
+            if role is not None and str(role).strip():
+                filters.append(FilterSchema(field="role", value=role, operator=OperatorEnum.EQ))
             query_filter = QueryFilter(filters=filters)
             users = await self.repo.list(query_filter=query_filter)
             return [

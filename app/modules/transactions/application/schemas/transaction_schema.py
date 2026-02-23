@@ -4,7 +4,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import File, Form, UploadFile
-from pydantic import BaseModel, ConfigDict
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from app.modules.transactions.domain.enums import TransactionStatus
 
@@ -38,7 +38,8 @@ def _parse_optional_uuid(v: Optional[str]) -> Optional[UUID]:
 
 
 class TransactionCreateCmd(BaseModel):
-    bank_account_id: UUID
+    bank_account_origin: UUID
+    bank_account_destination: UUID
     user_id: UUID
     tax_rate_id: UUID
     commission_id: UUID
@@ -46,6 +47,15 @@ class TransactionCreateCmd(BaseModel):
     origin_amount: float
     destination_amount: float
     code: str
+    commission_result: Optional[float] = Field(
+        default=None,
+        validation_alias=AliasChoices("commission_result", "resultado_comision"),
+    )
+    total_to_send: Optional[float] = Field(
+        default=None,
+        validation_alias=AliasChoices("total_to_send", "total_a_enviar"),
+    )
+    coupon_id: Optional[UUID] = None
     send_date: Optional[datetime] = None
     payment_date: Optional[datetime] = None
     send_voucher: Optional[str] = None
@@ -54,7 +64,8 @@ class TransactionCreateCmd(BaseModel):
     @classmethod
     def from_form(
         cls,
-        bank_account_id: str = Form(..., description="UUID de cuenta bancaria"),
+        bank_account_origin: str = Form(..., description="UUID cuenta origen"),
+        bank_account_destination: str = Form(..., description="UUID cuenta destino"),
         user_id: str = Form(..., description="UUID de usuario"),
         tax_rate_id: str = Form(..., description="UUID de tasa"),
         commission_id: str = Form(..., description="UUID de comisión"),
@@ -62,13 +73,17 @@ class TransactionCreateCmd(BaseModel):
         origin_amount: str = Form(..., description="Monto origen"),
         destination_amount: str = Form(..., description="Monto destino"),
         code: str = Form(..., description="Código de transacción"),
+        commission_result: Optional[str] = Form(None),
+        total_to_send: Optional[str] = Form(None),
+        coupon_id: Optional[str] = Form(None),
         send_date: Optional[str] = Form(None),
         payment_date: Optional[str] = Form(None),
         send_voucher: Optional[UploadFile] = File(None),
         payment_voucher: Optional[UploadFile] = File(None),
     ) -> tuple["TransactionCreateCmd", Optional[UploadFile], Optional[UploadFile]]:
         cmd = cls(
-            bank_account_id=UUID(bank_account_id),
+            bank_account_origin=UUID(bank_account_origin),
+            bank_account_destination=UUID(bank_account_destination),
             user_id=UUID(user_id),
             tax_rate_id=UUID(tax_rate_id),
             commission_id=UUID(commission_id),
@@ -76,6 +91,9 @@ class TransactionCreateCmd(BaseModel):
             origin_amount=float(origin_amount),
             destination_amount=float(destination_amount),
             code=code,
+            commission_result=_parse_optional_float(commission_result),
+            total_to_send=_parse_optional_float(total_to_send),
+            coupon_id=_parse_optional_uuid(coupon_id),
             send_date=_parse_optional_datetime(send_date),
             payment_date=_parse_optional_datetime(payment_date),
             send_voucher=None,  # se llenará en la ruta tras guardar
@@ -86,7 +104,8 @@ class TransactionCreateCmd(BaseModel):
 
 class TransactionUpdateCmd(BaseModel):
     id: UUID
-    bank_account_id: Optional[UUID] = None
+    bank_account_origin: Optional[UUID] = None
+    bank_account_destination: Optional[UUID] = None
     user_id: Optional[UUID] = None
     tax_rate_id: Optional[UUID] = None
     commission_id: Optional[UUID] = None
@@ -94,6 +113,15 @@ class TransactionUpdateCmd(BaseModel):
     origin_amount: Optional[float] = None
     destination_amount: Optional[float] = None
     code: Optional[str] = None
+    commission_result: Optional[float] = Field(
+        default=None,
+        validation_alias=AliasChoices("commission_result", "resultado_comision"),
+    )
+    total_to_send: Optional[float] = Field(
+        default=None,
+        validation_alias=AliasChoices("total_to_send", "total_a_enviar"),
+    )
+    coupon_id: Optional[UUID] = None
     send_date: Optional[datetime] = None
     payment_date: Optional[datetime] = None
     send_voucher: Optional[str] = None
@@ -103,7 +131,8 @@ class TransactionUpdateCmd(BaseModel):
     def from_form(
         cls,
         id: str = Form(..., description="UUID de la transacción"),
-        bank_account_id: Optional[str] = Form(None),
+        bank_account_origin: Optional[str] = Form(None),
+        bank_account_destination: Optional[str] = Form(None),
         user_id: Optional[str] = Form(None),
         tax_rate_id: Optional[str] = Form(None),
         commission_id: Optional[str] = Form(None),
@@ -111,6 +140,9 @@ class TransactionUpdateCmd(BaseModel):
         origin_amount: Optional[str] = Form(None),
         destination_amount: Optional[str] = Form(None),
         code: Optional[str] = Form(None),
+        commission_result: Optional[str] = Form(None),
+        total_to_send: Optional[str] = Form(None),
+        coupon_id: Optional[str] = Form(None),
         send_date: Optional[str] = Form(None),
         payment_date: Optional[str] = Form(None),
         send_voucher: Optional[UploadFile] = File(None),
@@ -118,7 +150,8 @@ class TransactionUpdateCmd(BaseModel):
     ) -> tuple["TransactionUpdateCmd", Optional[UploadFile], Optional[UploadFile]]:
         cmd = cls(
             id=UUID(id),
-            bank_account_id=_parse_optional_uuid(bank_account_id),
+            bank_account_origin=_parse_optional_uuid(bank_account_origin),
+            bank_account_destination=_parse_optional_uuid(bank_account_destination),
             user_id=_parse_optional_uuid(user_id),
             tax_rate_id=_parse_optional_uuid(tax_rate_id),
             commission_id=_parse_optional_uuid(commission_id),
@@ -126,6 +159,9 @@ class TransactionUpdateCmd(BaseModel):
             origin_amount=_parse_optional_float(origin_amount),
             destination_amount=_parse_optional_float(destination_amount),
             code=code,
+            commission_result=_parse_optional_float(commission_result),
+            total_to_send=_parse_optional_float(total_to_send),
+            coupon_id=_parse_optional_uuid(coupon_id),
             send_date=_parse_optional_datetime(send_date),
             payment_date=_parse_optional_datetime(payment_date),
             send_voucher=None,
@@ -136,7 +172,8 @@ class TransactionUpdateCmd(BaseModel):
 
 class TransactionReadDTO(BaseModel):
     id: UUID
-    bank_account_id: UUID
+    bank_account_origin_id: UUID
+    bank_account_destination_id: UUID
     user_id: UUID
     tax_rate_id: UUID
     commission_id: UUID
@@ -144,6 +181,9 @@ class TransactionReadDTO(BaseModel):
     origin_amount: float
     destination_amount: float
     code: str
+    commission_result: Optional[float] = None
+    total_to_send: Optional[float] = None
+    coupon_id: Optional[UUID] = None
     send_date: Optional[datetime] = None
     payment_date: Optional[datetime] = None
     send_voucher: Optional[str] = None

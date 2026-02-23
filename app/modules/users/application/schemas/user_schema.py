@@ -178,12 +178,18 @@ class UserReadDTO(BaseModel):
 
 
 class UserReadGeneralDTO(BaseModel):
+    """DTO con todos los campos del modelo User (excepto auth_id)."""
     id: UUID
     names: Optional[str] = None
     lastnames: Optional[str] = None
     email: Optional[EmailStr] = None
     profile_image: Optional[str] = None
+    document_number: Optional[str] = None
+    document_type: Optional[DocumentType] = None
+    is_agent: Optional[bool] = None
     role: Optional[UserRole] = None
+    phone: Optional[int] = None
+    code_phone: Optional[PhoneCode] = None
     created_at: datetime
     created_by: Optional[str] = None
     updated_at: datetime
@@ -191,9 +197,13 @@ class UserReadGeneralDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @model_validator(mode="after")
-    def set_default_profile_image(self):
+    def set_defaults_when_null(self):
         if self.profile_image is None:
             object.__setattr__(self, "profile_image", DEFAULT_PROFILE_IMAGE)
+        if self.document_type is None:
+            object.__setattr__(self, "document_type", DocumentType[DEFAULT_DOCUMENT_TYPE])
+        if self.code_phone is None:
+            object.__setattr__(self, "code_phone", PhoneCode[DEFAULT_CODE_PHONE])
         return self
 
 

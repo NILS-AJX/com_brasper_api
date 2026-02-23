@@ -71,6 +71,23 @@ def custom_openapi():
     if settings.PUBLIC_URL:
         url = settings.PUBLIC_URL.rstrip("/")
         openapi_schema["servers"] = [{"url": url}]
+    # Asegurar que TransactionCreateCmd esté en schemas (para Swagger POST /transactions/)
+    from app.modules.transactions.application.schemas import TransactionCreateCmd
+    if "components" not in openapi_schema:
+        openapi_schema["components"] = {}
+    if "schemas" not in openapi_schema["components"]:
+        openapi_schema["components"]["schemas"] = {}
+    schemas = openapi_schema["components"]["schemas"]
+    if "TransactionCreateCmd" not in schemas:
+        # Usar ref_template para que $ref apunten a #/components/schemas/...
+        schema = TransactionCreateCmd.model_json_schema(
+            ref_template="#/components/schemas/{model}"
+        )
+        defs = schema.pop("$defs", {})
+        for name, def_schema in defs.items():
+            if name not in schemas:
+                schemas[name] = def_schema
+        schemas["TransactionCreateCmd"] = schema
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 

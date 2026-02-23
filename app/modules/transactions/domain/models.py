@@ -18,12 +18,18 @@ from app.shared.model_base import ORMBaseModel
 
 
 class Transaction(ORMBaseModel):
-    """Transacción: bank_account, user, tax_rate, commission, montos, code, fechas, vouchers."""
+    """Transacción: bank_account_origin, bank_account_destination, user, tax_rate, commission, montos, code, fechas, vouchers."""
     __tablename__ = "transactions"
     __table_args__ = {"schema": "transaction"}
 
     # FKs
-    bank_account_id: Mapped[UUID] = mapped_column(
+    bank_account_origin_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("transaction.bank_accounts.id"),
+        nullable=False,
+        index=True,
+    )
+    bank_account_destination_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True),
         ForeignKey("transaction.bank_accounts.id"),
         nullable=False,
@@ -49,7 +55,7 @@ class Transaction(ORMBaseModel):
     )
 
     status: Mapped[TransactionStatus] = mapped_column(
-        Enum(TransactionStatus),
+        Enum(TransactionStatus, schema="transaction", name="transaction_status"),
         nullable=False,
         default=TransactionStatus.pending,
         index=True,
@@ -59,6 +65,14 @@ class Transaction(ORMBaseModel):
     origin_amount: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False)
     destination_amount: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False)
     code: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    commission_result: Mapped[Optional[float]] = mapped_column(Numeric(20, 8), nullable=True)
+    total_to_send: Mapped[Optional[float]] = mapped_column(Numeric(20, 8), nullable=True)
+    coupon_id: Mapped[Optional[UUID]] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("transaction.coupons.id"),
+        nullable=True,
+        index=True,
+    )
 
     # Fechas
     send_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -69,8 +83,17 @@ class Transaction(ORMBaseModel):
     payment_voucher: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     # Relaciones
-    bank_account: Mapped["BankAccount"] = relationship(
-        "BankAccount", back_populates="transactions", lazy="noload"
+    bank_account_origin: Mapped["BankAccount"] = relationship(
+        "BankAccount",
+        foreign_keys=[bank_account_origin_id],
+        back_populates="transactions_as_origin",
+        lazy="noload",
+    )
+    bank_account_destination: Mapped["BankAccount"] = relationship(
+        "BankAccount",
+        foreign_keys=[bank_account_destination_id],
+        back_populates="transactions_as_destination",
+        lazy="noload",
     )
 
 
@@ -154,8 +177,17 @@ class BankAccount(ORMBaseModel):
 
     # Relaciones
     bank: Mapped["Bank"] = relationship("Bank", back_populates="bank_accounts", lazy="noload")
-    transactions: Mapped[list["Transaction"]] = relationship(
-        "Transaction", back_populates="bank_account", lazy="noload"
+    transactions_as_origin: Mapped[list["Transaction"]] = relationship(
+        "Transaction",
+        foreign_keys="[Transaction.bank_account_origin_id]",
+        back_populates="bank_account_origin",
+        lazy="noload",
+    )
+    transactions_as_destination: Mapped[list["Transaction"]] = relationship(
+        "Transaction",
+        foreign_keys="[Transaction.bank_account_destination_id]",
+        back_populates="bank_account_destination",
+        lazy="noload",
     )
 
 

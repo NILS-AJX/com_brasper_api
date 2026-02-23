@@ -50,9 +50,16 @@ pip install -r requirements.txt
 
 ## Migraciones
 
+**Importante:** Ejecuta las migraciones antes de arrancar la API. Si no, el POST de transacciones puede devolver 500.
+
 ```bash
-# Aplicar todas las migraciones
-alembic upgrade head
+# Aplicar todas las migraciones (obligatorio antes de uvicorn)
+poetry run alembic upgrade head
+# o con el script:
+sh scripts/migrate.sh
+
+# Ver versión actual
+poetry run alembic current
 
 # Crear nueva migración (tras cambiar modelos)
 alembic revision --autogenerate -m "descripcion"
@@ -67,6 +74,10 @@ alembic downgrade -1
 ## Ejecutar la aplicación
 
 ```bash
+# 1. Aplicar migraciones (si no lo has hecho)
+poetry run alembic upgrade head
+
+# 2. Arrancar la API
 uvicorn app.main:app --reload
 ```
 

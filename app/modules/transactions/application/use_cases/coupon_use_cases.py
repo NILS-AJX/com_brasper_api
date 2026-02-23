@@ -1,4 +1,5 @@
 """Casos de uso CRUD para Coupon."""
+from datetime import datetime, timezone
 from uuid import UUID
 from typing import List, Optional
 
@@ -26,7 +27,30 @@ class ListCouponsUseCase:
     def __init__(self, repo: CouponRepositoryInterface):
         self.repo = repo
 
-    async def execute(self) -> List[CouponReadDTO]:
+    async def execute(self, automatic_only: bool = False) -> List[CouponReadDTO]:
+        from app.shared.query_filter import QueryFilter, FilterSchema, OperatorEnum
+
+        query_filter = None
+        if automatic_only:
+            now = datetime.now(timezone.utc)
+            query_filter = QueryFilter(
+                filters=[
+                    FilterSchema(field="is_active", value=True, operator=OperatorEnum.EQ),
+                ]
+            )
+            # Filtro adicional: vigencia (start_date <= now, end_date >= now o null)
+            # Se aplica en el repo o aquí; el repo base usa QueryFilter.
+            # Para fechas complejas, usamos un método custom en el repo.
+            items = await self.repo.list(query_filter=query_filter)
+            # Filtrar por vigencia en memoria (start_date/end_date)
+            result = []
+            for x in items:
+                if x.start_date and x.start_date > now:
+                    continue
+                if x.end_date and x.end_date < now:
+                    continue
+                result.append(CouponReadDTO.model_validate(x))
+            return result
         items = await self.repo.list()
         return [CouponReadDTO.model_validate(x) for x in items]
 
