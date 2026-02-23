@@ -3,7 +3,9 @@ from uuid import UUID
 from typing import List, Optional
 
 from app.modules.transactions.domain.models import BankAccount
+from app.shared.query_filter import FilterSchema, OperatorEnum, QueryFilter
 from app.modules.transactions.interfaces.bank_account_repository import BankAccountRepositoryInterface
+from app.modules.transactions.interfaces.bank_repository import BankRepositoryInterface
 from app.modules.transactions.application.schemas.bank_account_schema import (
     BankAccountCreateCmd,
     BankAccountUpdateCmd,
@@ -26,16 +28,29 @@ class ListBankAccountsUseCase:
     def __init__(self, repo: BankAccountRepositoryInterface):
         self.repo = repo
 
-    async def execute(self) -> List[BankAccountReadDTO]:
-        items = await self.repo.list()
+    async def execute(self, user_id: Optional[UUID] = None) -> List[BankAccountReadDTO]:
+        query_filter = None
+        if user_id:
+            query_filter = QueryFilter(
+                filters=[FilterSchema(field="user_id", value=user_id, operator=OperatorEnum.EQ)]
+            )
+        items = await self.repo.list(query_filter=query_filter)
         return [BankAccountReadDTO.model_validate(x) for x in items]
 
 
 class CreateBankAccountUseCase:
-    def __init__(self, repo: BankAccountRepositoryInterface):
+    def __init__(
+        self,
+        repo: BankAccountRepositoryInterface,
+        bank_repo: BankRepositoryInterface,
+    ):
         self.repo = repo
+        self.bank_repo = bank_repo
 
     async def execute(self, cmd: BankAccountCreateCmd) -> BankAccountReadDTO:
+        bank = await self.bank_repo.get(cmd.bank_id)
+        if not bank:
+            raise ValueError(f"Banco con id {cmd.bank_id} no existe")
         entity = BankAccount(
             user_id=cmd.user_id,
             bank_id=cmd.bank_id,
@@ -50,11 +65,8 @@ class CreateBankAccountUseCase:
             legal_representative_name=cmd.legal_representative_name,
             legal_representative_document=cmd.legal_representative_document,
             account_number=cmd.account_number,
-            account_number_confirmation=cmd.account_number_confirmation,
             cci_number=cmd.cci_number,
-            cci_number_confirmation=cmd.cci_number_confirmation,
             pix_key=cmd.pix_key,
-            pix_key_confirmation=cmd.pix_key_confirmation,
             pix_key_type=cmd.pix_key_type,
             cpf=cmd.cpf,
         )
@@ -65,17 +77,26 @@ class CreateBankAccountUseCase:
 
 
 class UpdateBankAccountUseCase:
-    def __init__(self, repo: BankAccountRepositoryInterface):
+    def __init__(
+        self,
+        repo: BankAccountRepositoryInterface,
+        bank_repo: BankRepositoryInterface,
+    ):
         self.repo = repo
+        self.bank_repo = bank_repo
 
     async def execute(self, cmd: BankAccountUpdateCmd) -> Optional[BankAccountReadDTO]:
         entity = await self.repo.get(cmd.id)
         if not entity:
             return None
+        if cmd.bank_id is not None:
+            bank = await self.bank_repo.get(cmd.bank_id)
+            if not bank:
+                raise ValueError(f"Banco con id {cmd.bank_id} no existe")
         if cmd.user_id is not None:
             entity.user_id = cmd.user_id
         if cmd.bank_id is not None:
-            entity.bank_id = cmd.bank_id
+            entity.bank_id = cmd.bank_id  # ya validado arriba
         if cmd.account_flow is not None:
             entity.account_flow = cmd.account_flow
         if cmd.account_holder_type is not None:
@@ -98,16 +119,10 @@ class UpdateBankAccountUseCase:
             entity.legal_representative_document = cmd.legal_representative_document
         if cmd.account_number is not None:
             entity.account_number = cmd.account_number
-        if cmd.account_number_confirmation is not None:
-            entity.account_number_confirmation = cmd.account_number_confirmation
         if cmd.cci_number is not None:
             entity.cci_number = cmd.cci_number
-        if cmd.cci_number_confirmation is not None:
-            entity.cci_number_confirmation = cmd.cci_number_confirmation
         if cmd.pix_key is not None:
             entity.pix_key = cmd.pix_key
-        if cmd.pix_key_confirmation is not None:
-            entity.pix_key_confirmation = cmd.pix_key_confirmation
         if cmd.pix_key_type is not None:
             entity.pix_key_type = cmd.pix_key_type
         if cmd.cpf is not None:

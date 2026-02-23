@@ -1,18 +1,20 @@
 # app/modules/transactions/adapters/router/bank_routes.py
 from uuid import UUID
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.modules.transactions.application.schemas import (
     BankCreateCmd,
     BankUpdateCmd,
     BankReadDTO,
+    BankOptionDTO,
     BanksByCountryCurrencyDTO,
 )
 from app.modules.transactions.adapters.dependencies import (
     GetBankByIdUseCaseDep,
     ListBanksUseCaseDep,
+    ListBankNamesUseCaseDep,
     ListBanksByCountryCurrencyUseCaseDep,
     CreateBankUseCaseDep,
     UpdateBankUseCaseDep,
@@ -23,13 +25,39 @@ router = APIRouter(prefix="/banks", tags=["banks"])
 
 
 @router.get("/", response_model=List[BankReadDTO])
-async def list_banks(use_case: ListBanksUseCaseDep):
-    return await use_case.execute()
+async def list_banks(
+    use_case: ListBanksUseCaseDep,
+    bank: Optional[str] = Query(None, description="Filtro por nombre de banco (parcial)"),
+    company: Optional[str] = Query(None, description="Filtro por empresa (parcial)"),
+    currency: Optional[str] = Query(None, description="Filtro por moneda: PEN, USD, BRL"),
+    currency_display: Optional[str] = Query(
+        None,
+        description='Filtro por moneda legible: "Soles (PEN)", "Dólares (USD)", "Reales (BRL)"',
+    ),
+    social_actor: Optional[str] = Query(
+        None,
+        description="Filtro por actor social: naturalPerson, legalEntity, generalAspect",
+    ),
+):
+    """Lista bancos con filtros opcionales por bank, company, currency, currency_display, social_actor."""
+    return await use_case.execute(
+        bank=bank,
+        company=company,
+        currency=currency,
+        currency_display=currency_display,
+        social_actor=social_actor,
+    )
 
 
 @router.get("/by-country-currency", response_model=BanksByCountryCurrencyDTO)
 async def list_banks_by_country_currency(use_case: ListBanksByCountryCurrencyUseCaseDep):
     """Devuelve bancos agrupados por país (PE, BR) y moneda (PEN, USD, BRL)."""
+    return await use_case.execute()
+
+
+@router.get("/names", response_model=List[BankOptionDTO])
+async def list_bank_names(use_case: ListBankNamesUseCaseDep):
+    """Devuelve lista de bancos con id, bank, currency, country (ordenados por nombre y moneda)."""
     return await use_case.execute()
 
 

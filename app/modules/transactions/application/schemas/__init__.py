@@ -9,6 +9,7 @@ from app.modules.transactions.application.schemas.bank_schema import (
     BankUpdateCmd,
     BankReadDTO,
     BankItemDTO,
+    BankOptionDTO,
     BanksByCountryCurrencyDTO,
 )
 from app.modules.transactions.application.schemas.bank_account_schema import (
@@ -30,6 +31,7 @@ __all__ = [
     "BankUpdateCmd",
     "BankReadDTO",
     "BankItemDTO",
+    "BankOptionDTO",
     "BanksByCountryCurrencyDTO",
     "BankAccountCreateCmd",
     "BankAccountUpdateCmd",

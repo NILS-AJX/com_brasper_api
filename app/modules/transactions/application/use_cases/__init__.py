@@ -9,6 +9,7 @@ from app.modules.transactions.application.use_cases.transaction_use_cases import
 from app.modules.transactions.application.use_cases.bank_use_cases import (
     GetBankByIdUseCase,
     ListBanksUseCase,
+    ListBankNamesUseCase,
     ListBanksByCountryCurrencyUseCase,
     CreateBankUseCase,
     UpdateBankUseCase,
@@ -37,6 +38,7 @@ __all__ = [
     "DeleteTransactionUseCase",
     "GetBankByIdUseCase",
     "ListBanksUseCase",
+    "ListBankNamesUseCase",
     "ListBanksByCountryCurrencyUseCase",
     "CreateBankUseCase",
     "UpdateBankUseCase",

@@ -9,10 +9,14 @@ from app.modules.transactions.application.schemas.bank_schema import (
     BankUpdateCmd,
     BankReadDTO,
     BankItemDTO,
+    BankOptionDTO,
     BanksByCountryCurrencyDTO,
     CURRENCY_DISPLAY_BANK,
+    DISPLAY_TO_CURRENCY,
 )
-from app.modules.transactions.domain.enums import BankCountry
+from app.modules.transactions.domain.enums import BankCountry, SocialActor
+from app.modules.coin.domain.enums import Currency
+from app.shared.query_filter import FilterSchema, OperatorEnum, QueryFilter
 
 
 def _to_item_dto(entity: Bank) -> BankItemDTO:
@@ -23,6 +27,7 @@ def _to_item_dto(entity: Bank) -> BankItemDTO:
         company=entity.company,
         currency=CURRENCY_DISPLAY_BANK.get(entity.currency.value, entity.currency.value.upper()),
         image=entity.image,
+        social_actor=entity.social_actor,
     )
 
 
@@ -41,9 +46,61 @@ class ListBanksUseCase:
     def __init__(self, repo: BankRepositoryInterface):
         self.repo = repo
 
-    async def execute(self) -> List[BankReadDTO]:
-        items = await self.repo.list()
+    async def execute(
+        self,
+        bank: Optional[str] = None,
+        company: Optional[str] = None,
+        currency: Optional[str] = None,
+        currency_display: Optional[str] = None,
+        social_actor: Optional[str] = None,
+    ) -> List[BankReadDTO]:
+        filters: List[FilterSchema] = []
+
+        if bank and bank.strip():
+            filters.append(FilterSchema(field="bank", value=f"%{bank.strip()}%", operator=OperatorEnum.ILIKE))
+        if company and company.strip():
+            filters.append(FilterSchema(field="company", value=f"%{company.strip()}%", operator=OperatorEnum.ILIKE))
+
+        # currency: acepta pen, PEN, usd, USD, etc.
+        if currency and currency.strip():
+            curr_str = currency.strip().upper()
+            try:
+                curr_enum = Currency(curr_str)  # Currency("PEN") -> pen
+                filters.append(FilterSchema(field="currency", value=curr_enum, operator=OperatorEnum.EQ))
+            except (ValueError, KeyError):
+                pass  # valor inválido, ignorar
+
+        # currency_display: "Soles (PEN)", "Dólares (USD)", "Reales (BRL)"
+        if currency_display and currency_display.strip():
+            curr_key = DISPLAY_TO_CURRENCY.get(currency_display.strip())
+            if curr_key:
+                curr_enum = Currency[curr_key]
+                filters.append(FilterSchema(field="currency", value=curr_enum, operator=OperatorEnum.EQ))
+
+        # social_actor: naturalPerson, legalEntity, generalAspect
+        if social_actor and social_actor.strip():
+            try:
+                actor_enum = SocialActor(social_actor.strip())
+                filters.append(FilterSchema(field="social_actor", value=actor_enum, operator=OperatorEnum.EQ))
+            except (ValueError, KeyError):
+                pass
+
+        query_filter = QueryFilter(filters=filters) if filters else None
+        items = await self.repo.list(query_filter=query_filter)
         return [BankReadDTO.from_bank(x) for x in items]
+
+
+class ListBankNamesUseCase:
+    """Devuelve lista de bancos con id, bank, currency, country (para dropdowns, filtros, etc.)."""
+    def __init__(self, repo: BankRepositoryInterface):
+        self.repo = repo
+
+    async def execute(self) -> List[BankOptionDTO]:
+        items = await self.repo.list()
+        return [
+            BankOptionDTO(id=x.id, bank=x.bank, currency=x.currency, country=x.country)
+            for x in sorted(items, key=lambda b: (b.bank, b.currency.value))
+        ]
 
 
 class ListBanksByCountryCurrencyUseCase:
@@ -78,6 +135,7 @@ class CreateBankUseCase:
             currency=cmd.currency,
             image=cmd.image,
             country=cmd.country,
+            social_actor=cmd.social_actor,
         )
         saved = await self.repo.add(entity)
         await self.repo.commit()
@@ -107,6 +165,8 @@ class UpdateBankUseCase:
             entity.image = cmd.image
         if cmd.country is not None:
             entity.country = cmd.country
+        if cmd.social_actor is not None:
+            entity.social_actor = cmd.social_actor
         await self.repo.update(entity)
         await self.repo.commit()
         await self.repo.refresh(entity)

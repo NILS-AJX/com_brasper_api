@@ -1,6 +1,6 @@
 # app/modules/users/application/use_cases/user_use_cases.py
 """Casos de uso del módulo users."""
-from uuid import UUID, uuid4
+from uuid import UUID
 from typing import Optional, List
 import logging
 
@@ -8,6 +8,7 @@ from fastapi import UploadFile
 from sqlalchemy.exc import IntegrityError
 
 from app.core.unit_of_work import UnitOfWorkBase
+from app.shared.services.file_service import save_profile_image
 from app.modules.auth.application.use_cases import CreateAuthService
 from app.modules.auth.application.schemas.auth_schema import UserInfoDTO
 from app.modules.users.domain.models import User
@@ -85,7 +86,7 @@ class CreateUserUseCase:
 
             image_path: Optional[str] = None
             if profile_image:
-                image_path = f"profile_{uuid4()}.jpg"
+                image_path = await save_profile_image(profile_image)
 
             user = User(
                 auth_id=auth_id,
@@ -95,6 +96,7 @@ class CreateUserUseCase:
                 profile_image=image_path or cmd.profile_image,
                 document_number=cmd.document_number,
                 document_type=cmd.document_type.value if cmd.document_type else None,
+                is_agent=cmd.is_agent,
                 role=cmd.role.value if cmd.role else None,
                 phone=cmd.phone,
                 code_phone=cmd.code_phone.value if cmd.code_phone else None,
@@ -130,11 +132,27 @@ class UpdateUserUseCase:
             if not existing_user:
                 return None
 
-            update_data = cmd.model_dump(exclude_unset=True, exclude={"id"})
-            for field, value in update_data.items():
-                if hasattr(value, "value"):
-                    value = value.value
-                setattr(existing_user, field, value)
+            # Actualización explícita por campo (evita problemas con model_dump y enums)
+            if "names" in cmd.model_fields_set:
+                existing_user.names = cmd.names
+            if "lastnames" in cmd.model_fields_set:
+                existing_user.lastnames = cmd.lastnames
+            if "email" in cmd.model_fields_set:
+                existing_user.email = cmd.email
+            if "profile_image" in cmd.model_fields_set:
+                existing_user.profile_image = cmd.profile_image
+            if "document_number" in cmd.model_fields_set:
+                existing_user.document_number = cmd.document_number
+            if "document_type" in cmd.model_fields_set:
+                existing_user.document_type = cmd.document_type.value if cmd.document_type else None
+            if "is_agent" in cmd.model_fields_set:
+                existing_user.is_agent = cmd.is_agent
+            if "role" in cmd.model_fields_set:
+                existing_user.role = cmd.role.value if cmd.role else None
+            if "phone" in cmd.model_fields_set:
+                existing_user.phone = cmd.phone
+            if "code_phone" in cmd.model_fields_set:
+                existing_user.code_phone = cmd.code_phone.value if cmd.code_phone else None
 
             updated_user = await self._uow.user_repository.update(existing_user)
             await self._uow.commit()

@@ -5,30 +5,30 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.modules.transactions.domain.enums import BankCountry, AccountFlowType, AccountHolderType
+from app.modules.transactions.domain.enums import BankCountry, AccountFlowType, SocialActor
 
 
 class BankAccountCreateCmd(BaseModel):
     user_id: UUID
     bank_id: UUID
     account_flow: AccountFlowType
-    account_holder_type: AccountHolderType
+    account_holder_type: SocialActor
     bank_country: BankCountry
     holder_names: Optional[str] = None
     holder_surnames: Optional[str] = None
-    document_number: Optional[str] = None
+    document_number: Optional[int] = None
     business_name: Optional[str] = None
-    ruc_number: Optional[str] = None
+    ruc_number: Optional[int] = None
     legal_representative_name: Optional[str] = None
-    legal_representative_document: Optional[str] = None
-    account_number: Optional[str] = None
-    account_number_confirmation: Optional[str] = None
-    cci_number: Optional[str] = None
-    cci_number_confirmation: Optional[str] = None
+    legal_representative_document: Optional[int] = None
+    account_number: Optional[int] = None
+    account_number_confirmation: Optional[int] = None
+    cci_number: Optional[int] = None
+    cci_number_confirmation: Optional[int] = None
     pix_key: Optional[str] = None
     pix_key_confirmation: Optional[str] = None
     pix_key_type: Optional[str] = None
-    cpf: Optional[str] = None
+    cpf: Optional[int] = None
 
 
 class BankAccountUpdateCmd(BaseModel):
@@ -36,23 +36,23 @@ class BankAccountUpdateCmd(BaseModel):
     user_id: Optional[UUID] = None
     bank_id: Optional[UUID] = None
     account_flow: Optional[AccountFlowType] = None
-    account_holder_type: Optional[AccountHolderType] = None
+    account_holder_type: Optional[SocialActor] = None
     bank_country: Optional[BankCountry] = None
     holder_names: Optional[str] = None
     holder_surnames: Optional[str] = None
-    document_number: Optional[str] = None
+    document_number: Optional[int] = None
     business_name: Optional[str] = None
-    ruc_number: Optional[str] = None
+    ruc_number: Optional[int] = None
     legal_representative_name: Optional[str] = None
-    legal_representative_document: Optional[str] = None
-    account_number: Optional[str] = None
-    account_number_confirmation: Optional[str] = None
-    cci_number: Optional[str] = None
-    cci_number_confirmation: Optional[str] = None
+    legal_representative_document: Optional[int] = None
+    account_number: Optional[int] = None
+    account_number_confirmation: Optional[int] = None
+    cci_number: Optional[int] = None
+    cci_number_confirmation: Optional[int] = None
     pix_key: Optional[str] = None
     pix_key_confirmation: Optional[str] = None
     pix_key_type: Optional[str] = None
-    cpf: Optional[str] = None
+    cpf: Optional[int] = None
 
 
 class BankAccountReadDTO(BaseModel):
@@ -60,23 +60,20 @@ class BankAccountReadDTO(BaseModel):
     user_id: UUID
     bank_id: UUID
     account_flow: AccountFlowType
-    account_holder_type: AccountHolderType
+    account_holder_type: SocialActor
     bank_country: BankCountry
     holder_names: Optional[str] = None
     holder_surnames: Optional[str] = None
-    document_number: Optional[str] = None
+    document_number: Optional[int] = None
     business_name: Optional[str] = None
-    ruc_number: Optional[str] = None
+    ruc_number: Optional[int] = None
     legal_representative_name: Optional[str] = None
-    legal_representative_document: Optional[str] = None
-    account_number: Optional[str] = None
-    account_number_confirmation: Optional[str] = None
-    cci_number: Optional[str] = None
-    cci_number_confirmation: Optional[str] = None
+    legal_representative_document: Optional[int] = None
+    account_number: Optional[int] = None
+    cci_number: Optional[int] = None
     pix_key: Optional[str] = None
-    pix_key_confirmation: Optional[str] = None
     pix_key_type: Optional[str] = None
-    cpf: Optional[str] = None
+    cpf: Optional[int] = None
     created_at: datetime
     created_by: Optional[str] = None
     updated_at: datetime

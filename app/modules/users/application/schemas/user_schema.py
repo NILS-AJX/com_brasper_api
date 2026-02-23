@@ -1,6 +1,6 @@
 from datetime import datetime
 from fastapi import File, Form, UploadFile
-from pydantic import BaseModel, EmailStr, ConfigDict, Field
+from pydantic import BaseModel, EmailStr, ConfigDict, Field, model_validator, field_validator
 from uuid import UUID
 from typing import Optional
 
@@ -11,7 +11,17 @@ from app.modules.users.domain.enums import UserRole, DocumentType, PhoneCode
 phone_max_digits = 999_999_999_999_999
 
 
+def _phone_empty_to_none(v):
+    """Convierte '' o None a None; permite int o str numérico."""
+    if v is None or v == "":
+        return None
+    if isinstance(v, str) and v.strip() == "":
+        return None
+    return v
+
+
 class UserCreateCmd(BaseModel):
+    """Campos para crear usuario. Todos opcionales."""
     names: Optional[str] = None
     lastnames: Optional[str] = None
     email: Optional[EmailStr] = None
@@ -19,10 +29,16 @@ class UserCreateCmd(BaseModel):
     profile_image: Optional[str] = None
     document_number: Optional[str] = None
     document_type: Optional[DocumentType] = None
+    is_agent: Optional[bool] = None
     role: Optional[UserRole] = None
     auth_id: Optional[UUID] = None
     phone: Optional[int] = Field(None, le=phone_max_digits, description="Hasta 15 dígitos")
     code_phone: Optional[PhoneCode] = None
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def phone_empty_to_none(cls, v):
+        return _phone_empty_to_none(v)
 
     def to_auth_cmd(self) -> Optional[AuthCreateCmd]:
         if self.email and self.password:
@@ -39,6 +55,7 @@ class UserCreateCmd(BaseModel):
         profile_image: Optional[UploadFile] = File(None),
         document_number: Optional[str] = Form(None),
         document_type: Optional[DocumentType] = Form(None),
+        is_agent: Optional[bool] = Form(None),
         role: Optional[UserRole] = Form(None),
         phone: Optional[int] = Form(None),
         code_phone: Optional[PhoneCode] = Form(None),
@@ -50,6 +67,7 @@ class UserCreateCmd(BaseModel):
             password=password,
             document_number=document_number,
             document_type=document_type,
+            is_agent=is_agent,
             role=role,
             phone=phone,
             code_phone=code_phone,
@@ -65,9 +83,69 @@ class UserUpdateCmd(BaseModel):
     profile_image: Optional[str] = None
     document_number: Optional[str] = None
     document_type: Optional[DocumentType] = None
+    is_agent: Optional[bool] = None
     role: Optional[UserRole] = None
     phone: Optional[int] = Field(None, le=phone_max_digits, description="Hasta 15 dígitos")
     code_phone: Optional[PhoneCode] = None
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def phone_empty_to_none(cls, v):
+        return _phone_empty_to_none(v)
+
+    @classmethod
+    def from_form(
+        cls,
+        id: str = Form(..., description="UUID del usuario"),
+        names: Optional[str] = Form(None),
+        lastnames: Optional[str] = Form(None),
+        email: Optional[EmailStr] = Form(None),
+        profile_image: Optional[UploadFile] = File(None),
+        document_number: Optional[str] = Form(None),
+        document_type: Optional[DocumentType] = Form(None),
+        is_agent: Optional[bool] = Form(None),
+        role: Optional[UserRole] = Form(None),
+        phone: Optional[int] = Form(None),
+        code_phone: Optional[PhoneCode] = Form(None),
+    ) -> tuple["UserUpdateCmd", Optional[UploadFile]]:
+        cmd = cls(
+            id=UUID(id),
+            names=names,
+            lastnames=lastnames,
+            email=email,
+            document_number=document_number,
+            document_type=document_type,
+            is_agent=is_agent,
+            role=role,
+            phone=phone,
+            code_phone=code_phone,
+        )
+        return cmd, profile_image
+
+
+class UpdateCurrentUserCmd(BaseModel):
+    """Campos actualizables para PUT /auth/me (usuario autenticado)."""
+    names: Optional[str] = None
+    lastnames: Optional[str] = None
+    email: Optional[EmailStr] = None
+    profile_image: Optional[str] = None
+    document_number: Optional[str] = None
+    document_type: Optional[DocumentType] = None
+    is_agent: Optional[bool] = None
+    role: Optional[UserRole] = None
+    phone: Optional[int] = Field(None, le=phone_max_digits, description="Hasta 15 dígitos")
+    code_phone: Optional[PhoneCode] = None
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def phone_empty_to_none(cls, v):
+        return _phone_empty_to_none(v)
+
+
+# Valores por defecto cuando el campo es null en BD
+DEFAULT_PROFILE_IMAGE = "profile_images/placeholder.svg"
+DEFAULT_DOCUMENT_TYPE = "dni"
+DEFAULT_CODE_PHONE = "pe"
 
 
 class UserReadDTO(BaseModel):
@@ -78,6 +156,7 @@ class UserReadDTO(BaseModel):
     profile_image: Optional[str] = None
     document_number: Optional[str] = None
     document_type: Optional[DocumentType] = None
+    is_agent: Optional[bool] = None
     role: Optional[UserRole] = None
     phone: Optional[int] = None
     code_phone: Optional[PhoneCode] = None
@@ -87,12 +166,23 @@ class UserReadDTO(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    @model_validator(mode="after")
+    def set_defaults_when_null(self):
+        if self.profile_image is None:
+            object.__setattr__(self, "profile_image", DEFAULT_PROFILE_IMAGE)
+        if self.document_type is None:
+            object.__setattr__(self, "document_type", DocumentType[DEFAULT_DOCUMENT_TYPE])
+        if self.code_phone is None:
+            object.__setattr__(self, "code_phone", PhoneCode[DEFAULT_CODE_PHONE])
+        return self
+
 
 class UserReadGeneralDTO(BaseModel):
     id: UUID
     names: Optional[str] = None
     lastnames: Optional[str] = None
     email: Optional[EmailStr] = None
+    profile_image: Optional[str] = None
     role: Optional[UserRole] = None
     created_at: datetime
     created_by: Optional[str] = None
@@ -100,13 +190,17 @@ class UserReadGeneralDTO(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    @model_validator(mode="after")
+    def set_default_profile_image(self):
+        if self.profile_image is None:
+            object.__setattr__(self, "profile_image", DEFAULT_PROFILE_IMAGE)
+        return self
+
 
 class UserNameDTO(BaseModel):
+    """DTO mínimo para listar usuarios (id, nombres, apellidos)."""
     id: UUID
     names: Optional[str] = None
     lastnames: Optional[str] = None
-    created_at: datetime
-    created_by: Optional[str] = None
-    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -22,6 +22,7 @@ from app.modules.transactions.application.use_cases import (
     DeleteTransactionUseCase,
     GetBankByIdUseCase,
     ListBanksUseCase,
+    ListBankNamesUseCase,
     ListBanksByCountryCurrencyUseCase,
     CreateBankUseCase,
     UpdateBankUseCase,
@@ -101,6 +102,12 @@ def list_banks_uc(
     return ListBanksUseCase(repo)
 
 
+def list_bank_names_uc(
+    repo: Annotated[BankRepositoryInterface, Depends(get_bank_repository)],
+) -> ListBankNamesUseCase:
+    return ListBankNamesUseCase(repo)
+
+
 def list_banks_by_country_currency_uc(
     repo: Annotated[BankRepositoryInterface, Depends(get_bank_repository)],
 ) -> ListBanksByCountryCurrencyUseCase:
@@ -127,6 +134,7 @@ def delete_bank_uc(
 
 GetBankByIdUseCaseDep = Annotated[GetBankByIdUseCase, Depends(get_bank_by_id_uc)]
 ListBanksUseCaseDep = Annotated[ListBanksUseCase, Depends(list_banks_uc)]
+ListBankNamesUseCaseDep = Annotated[ListBankNamesUseCase, Depends(list_bank_names_uc)]
 ListBanksByCountryCurrencyUseCaseDep = Annotated[ListBanksByCountryCurrencyUseCase, Depends(list_banks_by_country_currency_uc)]
 CreateBankUseCaseDep = Annotated[CreateBankUseCase, Depends(create_bank_uc)]
 UpdateBankUseCaseDep = Annotated[UpdateBankUseCase, Depends(update_bank_uc)]
@@ -154,14 +162,16 @@ def list_bank_accounts_uc(
 
 def create_bank_account_uc(
     repo: Annotated[BankAccountRepositoryInterface, Depends(get_bank_account_repository)],
+    bank_repo: Annotated[BankRepositoryInterface, Depends(get_bank_repository)],
 ) -> CreateBankAccountUseCase:
-    return CreateBankAccountUseCase(repo)
+    return CreateBankAccountUseCase(repo, bank_repo)
 
 
 def update_bank_account_uc(
     repo: Annotated[BankAccountRepositoryInterface, Depends(get_bank_account_repository)],
+    bank_repo: Annotated[BankRepositoryInterface, Depends(get_bank_repository)],
 ) -> UpdateBankAccountUseCase:
-    return UpdateBankAccountUseCase(repo)
+    return UpdateBankAccountUseCase(repo, bank_repo)
 
 
 def delete_bank_account_uc(

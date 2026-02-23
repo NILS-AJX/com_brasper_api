@@ -167,3 +167,71 @@ async def delete_home_popup_image(image_path: Optional[str]) -> bool:
     if not image_path:
         return False
     return await file_service.delete_file(image_path)
+
+
+# ======================
+# Funciones para Profile Image (usuario)
+# ======================
+
+async def save_profile_image(profile_file: Optional[UploadFile]) -> Optional[str]:
+    """Guarda imagen de perfil de usuario. Retorna ruta relativa (ej: profile_images/profile_xxx.jpg)."""
+    if not profile_file:
+        return None
+
+    file_content = await profile_file.read()
+    if not file_content:
+        return None
+
+    ext = Path(profile_file.filename or "").suffix.lower()
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise ValueError(
+            f"Extensión '{ext}' no permitida para imagen de perfil. "
+            f"Permitidas: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}"
+        )
+
+    return await file_service.save_file(
+        file_content=file_content,
+        original_filename=profile_file.filename or "profile",
+        file_type=FileType.PROFILE_IMAGE,
+        custom_prefix="profile",
+        allowed_extensions=ALLOWED_IMAGE_EXTENSIONS,
+    )
+
+
+async def delete_profile_image(image_path: Optional[str]) -> bool:
+    """Elimina imagen de perfil de usuario."""
+    if not image_path:
+        return False
+    return await file_service.delete_file(image_path)
+
+
+# ======================
+# Funciones para Transaction Voucher
+# ======================
+
+async def save_transaction_voucher(
+    voucher_file: Optional[UploadFile],
+    prefix: str = "voucher",
+) -> Optional[str]:
+    """Guarda voucher de transacción (send/payment). Retorna ruta relativa."""
+    if not voucher_file or not voucher_file.filename:
+        return None
+
+    file_content = await voucher_file.read()
+    if not file_content:
+        return None
+
+    ext = Path(voucher_file.filename).suffix.lower()
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise ValueError(
+            f"Extensión '{ext}' no permitida para voucher. "
+            f"Permitidas: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}"
+        )
+
+    return await file_service.save_file(
+        file_content=file_content,
+        original_filename=voucher_file.filename,
+        file_type=FileType.TRANSACTION_VOUCHER,
+        custom_prefix=prefix,
+        allowed_extensions=ALLOWED_IMAGE_EXTENSIONS,
+    )

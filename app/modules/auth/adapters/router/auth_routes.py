@@ -1,8 +1,12 @@
 # app/modules/auth/adapters/router/auth_routes.py
-from fastapi import APIRouter, Form, Depends, HTTPException, status, Request
+from uuid import UUID
+
+from fastapi import APIRouter, File, Form, Depends, HTTPException, status, Request, UploadFile
 from typing import Optional
 
 from pydantic import BaseModel
+
+from app.shared.services.file_service import save_profile_image
 
 from app.modules.auth.application.use_cases import LoginUseCase, VerifyCredentialsUseCase
 from app.modules.auth.application.schemas.auth_schema import (
@@ -10,9 +14,18 @@ from app.modules.auth.application.schemas.auth_schema import (
     PasswordResetRequest,
     PasswordResetConfirmRequest,
 )
-from app.modules.auth.infrastructure.dependencies import get_security_utils, get_auth_repository
+from app.modules.auth.infrastructure.dependencies import (
+    get_security_utils,
+    get_auth_repository,
+    get_current_user,
+)
 from app.modules.auth.interfaces.auth_repository import AuthRepositoryInterface
-from app.core.container import get_login_uc, get_auth_service
+from app.modules.users.application.schemas.user_schema import (
+    UpdateCurrentUserCmd,
+    UserReadDTO,
+    UserUpdateCmd,
+)
+from app.core.container import get_login_uc, get_auth_service, get_user_by_id_uc, update_user_uc
 
 import logging
 
@@ -34,6 +47,79 @@ async def get_login_data(
         return AuthCreateCmd(username=username, password=password)
     body = await request.json()
     return AuthCreateCmd(**body)
+
+
+@router.get("/me/", response_model=UserReadDTO)
+async def get_current_user_profile(
+    current_user: dict = Depends(get_current_user),
+    use_case=Depends(get_user_by_id_uc),
+):
+    """Obtiene el perfil del usuario autenticado. Alternativa: GET /user/{user_id}."""
+    user_id = current_user.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    result = await use_case.execute(UUID(user_id))
+    if not result:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return result
+
+
+async def _update_me(cmd: UpdateCurrentUserCmd, current_user: dict, use_case):
+    """Lógica común para POST y PUT /auth/me/."""
+    user_id = current_user.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    update_cmd = UserUpdateCmd(id=UUID(user_id), **cmd.model_dump(exclude_unset=True))
+    result = await use_case.execute(update_cmd)
+    if not result:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return result
+
+
+@router.post("/me/", response_model=UserReadDTO, status_code=status.HTTP_200_OK)
+async def create_or_update_current_user(
+    cmd: UpdateCurrentUserCmd,
+    current_user: dict = Depends(get_current_user),
+    use_case=Depends(update_user_uc),
+):
+    """Crea o actualiza el perfil del usuario autenticado. Todos los campos opcionales."""
+    return await _update_me(cmd, current_user, use_case)
+
+
+@router.put("/me/", response_model=UserReadDTO)
+async def update_current_user(
+    cmd: UpdateCurrentUserCmd,
+    current_user: dict = Depends(get_current_user),
+    use_case=Depends(update_user_uc),
+):
+    """Actualiza el perfil del usuario autenticado. Todos los campos opcionales."""
+    return await _update_me(cmd, current_user, use_case)
+
+
+@router.post("/me/profile-image")
+async def upload_profile_image(
+    profile_image: UploadFile = File(..., description="Imagen de perfil (.png, .jpg, .jpeg, .webp, .gif)"),
+    current_user: dict = Depends(get_current_user),
+):
+    """Sube imagen de perfil. Retorna la ruta para usar en PUT /auth/me/ (campo profile_image)."""
+    if not current_user.get("user_id"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    path = await save_profile_image(profile_image)
+    if not path:
+        raise HTTPException(status_code=400, detail="No se pudo guardar la imagen")
+    return {"profile_image": path}
 
 
 @router.post("/login/", response_model=None)

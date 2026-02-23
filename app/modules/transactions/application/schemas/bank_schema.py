@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from app.modules.coin.domain.enums import Currency
-from app.modules.transactions.domain.enums import BankCountry
+from app.modules.transactions.domain.enums import BankCountry, SocialActor
 from app.modules.transactions.domain.models import Bank
 
 
@@ -17,6 +17,9 @@ CURRENCY_DISPLAY_BANK: dict[str, str] = {
     "brl": "Reales (BRL)",
 }
 
+# Mapeo inverso: display -> currency (para filtro por currency_display)
+DISPLAY_TO_CURRENCY: dict[str, str] = {v: k for k, v in CURRENCY_DISPLAY_BANK.items()}
+
 
 class BankCreateCmd(BaseModel):
     bank: str
@@ -26,6 +29,7 @@ class BankCreateCmd(BaseModel):
     currency: Currency
     image: str
     country: BankCountry
+    social_actor: Optional[SocialActor] = None
 
 
 class BankUpdateCmd(BaseModel):
@@ -37,6 +41,7 @@ class BankUpdateCmd(BaseModel):
     currency: Optional[Currency] = None
     image: Optional[str] = None
     country: Optional[BankCountry] = None
+    social_actor: Optional[SocialActor] = None
 
 
 class BankReadDTO(BaseModel):
@@ -49,6 +54,7 @@ class BankReadDTO(BaseModel):
     currency_display: str = ""
     image: str
     country: BankCountry
+    social_actor: Optional[SocialActor] = None
     created_at: datetime
     created_by: Optional[str] = None
     updated_at: datetime
@@ -67,10 +73,21 @@ class BankReadDTO(BaseModel):
             currency_display=CURRENCY_DISPLAY_BANK.get(entity.currency.value, entity.currency.value.upper()),
             image=entity.image,
             country=entity.country,
+            social_actor=entity.social_actor,
             created_at=entity.created_at,
             created_by=entity.created_by,
             updated_at=entity.updated_at,
         )
+
+
+class BankOptionDTO(BaseModel):
+    """Item reducido para dropdowns/select: id, bank, currency, country."""
+    id: UUID
+    bank: str
+    currency: Currency
+    country: BankCountry
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BankItemDTO(BaseModel):
@@ -81,6 +98,7 @@ class BankItemDTO(BaseModel):
     company: str
     currency: str
     image: str
+    social_actor: Optional[SocialActor] = None
 
     model_config = ConfigDict(from_attributes=True)
 

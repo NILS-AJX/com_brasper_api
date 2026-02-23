@@ -29,7 +29,7 @@ class AccountFlowType(str, enum.Enum):
     destination = "destination"  # cuenta destino
 
 
-class AccountHolderType(str, enum.Enum):
-    """Tipo de titular: personal o jurídica."""
-    personal = "personal"
-    legal = "legal"  # jurídica
+class SocialActor(str, enum.Enum):
+    naturalPerson = "naturalPerson"
+    legalEntity = "legalEntity"
+    generalAspect = "generalAspect"

@@ -86,14 +86,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Middleware de auth desactivado por el momento (sin tokens)
-# app.add_middleware(TokenAuthMiddleware)
+# Middleware de auth: valida token Bearer y establece current_user
+from app.middlewares.auth import TokenAuthMiddleware
+app.add_middleware(TokenAuthMiddleware)
 
 # Archivos estáticos (imágenes, etc.)
 from pathlib import Path
+from fastapi.responses import FileResponse, Response
+from fastapi import HTTPException
+import re
+
 _media_path = Path("media")
-if _media_path.exists():
-    app.mount("/media", StaticFiles(directory="media"), name="media")
+
+# Solo rutas sin subcarpeta: /media/profile_xxx.jpg (legacy)
+_PROFILE_SINGLE = re.compile(r"^profile_[a-zA-Z0-9\-]+\.(jpg|jpeg|png|webp|gif)$", re.I)
+
+# Placeholder SVG cuando la imagen de perfil no existe (evita 404 en <img src>)
+_PROFILE_PLACEHOLDER_SVG = (
+    b'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">'
+    b'<rect width="100" height="100" fill="#e8e8e8"/>'
+    b'<circle cx="50" cy="38" r="14" fill="#b0b0b0"/>'
+    b'<ellipse cx="50" cy="88" rx="28" ry="22" fill="#b0b0b0"/>'
+    b"</svg>"
+)
+
+
+@app.get("/media/{file_path:path}")
+async def serve_media(file_path: str):
+    """Sirve archivos de media/. Fallback: profile_xxx.jpg → profile_images/ o placeholder."""
+    # Evitar path traversal
+    if ".." in file_path or file_path.startswith("/"):
+        raise HTTPException(status_code=404, detail="Not found")
+    # Fallback para profile_xxx.jpg en raíz (legacy)
+    if _PROFILE_SINGLE.match(file_path):
+        for candidate in [
+            _media_path / "profile_images" / file_path,
+            _media_path / file_path,
+        ]:
+            if candidate.exists() and candidate.is_file():
+                return FileResponse(candidate)
+        # Imagen no existe: devolver placeholder (evita 404 en <img src>)
+        return Response(
+            content=_PROFILE_PLACEHOLDER_SVG,
+            media_type="image/svg+xml",
+        )
+    # Ruta normal
+    full_path = _media_path / file_path
+    if full_path.exists() and full_path.is_file():
+        return FileResponse(full_path)
+    raise HTTPException(status_code=404, detail="Not found")
+
 
 # Incluir routers
 app.include_router(auth_router)

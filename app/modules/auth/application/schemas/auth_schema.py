@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, model_validator
 from uuid import UUID
 from typing import Optional
 
@@ -12,6 +12,9 @@ class AuthReadDTO(BaseModel):
     id: UUID
 
 
+DEFAULT_PROFILE_IMAGE = "profile_images/placeholder.svg"
+
+
 class UserInfoDTO(BaseModel):
     id: UUID
     names: Optional[str] = None
@@ -22,6 +25,12 @@ class UserInfoDTO(BaseModel):
     role: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def set_default_profile_image(self):
+        if self.profile_image is None:
+            object.__setattr__(self, "profile_image", DEFAULT_PROFILE_IMAGE)
+        return self
 
 
 class TokenInfoDTO(BaseModel):

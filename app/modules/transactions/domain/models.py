@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import Numeric, Enum, String, ForeignKey, DateTime, Boolean, Integer
+from sqlalchemy import BigInteger, Numeric, Enum, String, ForeignKey, DateTime, Boolean, Integer
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,7 +12,7 @@ from app.modules.transactions.domain.enums import (
     TransactionStatus,
     BankCountry,
     AccountFlowType,
-    AccountHolderType,
+    SocialActor,
 )
 from app.shared.model_base import ORMBaseModel
 
@@ -88,6 +88,11 @@ class Bank(ORMBaseModel):
     country: Mapped[BankCountry] = mapped_column(
         Enum(BankCountry, schema="transaction", name="bank_country"), nullable=False, index=True
     )
+    social_actor: Mapped[Optional[SocialActor]] = mapped_column(
+        Enum(SocialActor, schema="transaction", name="account_holder_type"),
+        nullable=True,
+        index=True,
+    )
 
     bank_accounts: Mapped[list["BankAccount"]] = relationship(
         "BankAccount", back_populates="bank", lazy="noload"
@@ -116,8 +121,8 @@ class BankAccount(ORMBaseModel):
         nullable=False,
         index=True,
     )
-    account_holder_type: Mapped[AccountHolderType] = mapped_column(
-        Enum(AccountHolderType, schema="transaction", name="account_holder_type"),
+    account_holder_type: Mapped[SocialActor] = mapped_column(
+        Enum(SocialActor, schema="transaction", name="account_holder_type"),
         nullable=False,
         index=True,
     )
@@ -130,25 +135,22 @@ class BankAccount(ORMBaseModel):
     # Titular (Perú)
     holder_names: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     holder_surnames: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    document_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    document_number: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
 
     # Empresarial (opcional)
     business_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    ruc_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    ruc_number: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     legal_representative_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    legal_representative_document: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    legal_representative_document: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
 
     # Cuenta Perú
-    account_number: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    account_number_confirmation: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    cci_number: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    cci_number_confirmation: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    account_number: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    cci_number: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
 
     # Brasil / PIX
     pix_key: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    pix_key_confirmation: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     pix_key_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    cpf: Mapped[Optional[str]] = mapped_column(String(14), nullable=True)
+    cpf: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
 
     # Relaciones
     bank: Mapped["Bank"] = relationship("Bank", back_populates="bank_accounts", lazy="noload")

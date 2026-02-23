@@ -1,7 +1,9 @@
 # app/modules/users/adapters/router/user_routes.py
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status, File
 from uuid import UUID
 from typing import Annotated, List, Optional
+
+from app.shared.services.file_service import save_profile_image
 
 from app.modules.auth.application.schemas.auth_schema import UserInfoDTO
 from app.modules.users.application.schemas.user_schema import (
@@ -81,9 +83,14 @@ async def create_user(
 
 @router.put("/", response_model=UserReadDTO)
 async def update_user(
-    cmd: UserUpdateCmd,
+    form_data: Annotated[tuple[UserUpdateCmd, Optional[UploadFile]], Depends(UserUpdateCmd.from_form)],
     use_case: UpdateUserUseCase = Depends(update_user_uc),
 ):
+    cmd, profile_image_file = form_data
+    if profile_image_file and profile_image_file.filename:
+        image_path = await save_profile_image(profile_image_file)
+        if image_path:
+            cmd.profile_image = image_path
     return await use_case.execute(cmd)
 
 
@@ -109,6 +116,7 @@ async def list_users(
     return await use_case.execute()
 
 
-@router.get("/detail/name-list/", response_model=List[UserNameDTO])
+@router.get("/name-list/", response_model=List[UserNameDTO])
 async def list_user_name(use_case: ListUserNameUseCase = Depends(list_user_name_uc)):
+    """Lista usuarios con id, names, lastnames (ordenados)."""
     return await use_case.execute()
