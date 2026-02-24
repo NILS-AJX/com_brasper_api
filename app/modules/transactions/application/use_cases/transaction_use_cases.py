@@ -1,8 +1,14 @@
 # app/modules/transactions/application/use_cases/transaction_use_cases.py
 """Casos de uso CRUD para Transaction."""
+from __future__ import annotations
+
 from datetime import datetime
 from uuid import UUID
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.modules.users.application.use_cases import CreateUserUseCase
+    from app.modules.transactions.application.use_cases.bank_account_use_cases import CreateBankAccountUseCase
 
 from app.shared.query_filter import FilterSchema, OperatorEnum, QueryFilter
 from app.modules.transactions.domain.models import Transaction
@@ -12,18 +18,15 @@ from app.modules.transactions.application.schemas.transaction_schema import (
     TransactionCreateCmd,
     TransactionUpdateCmd,
     TransactionReadDTO,
+    ImportRequestCmd,
+    ImportResponseDTO,
 )
 
-
-class GetTransactionByIdUseCase:
-    def __init__(self, repo: TransactionRepositoryInterface):
-        self.repo = repo
-
-    async def execute(self, transaction_id: UUID) -> Optional[TransactionReadDTO]:
-        entity = await self.repo.get(transaction_id)
-        if not entity:
-            return None
-        return TransactionReadDTO.model_validate(entity)
+# Mapeo cmd -> entity (campos con sufijo _id en el modelo)
+_CMD_TO_ENTITY = {
+    "bank_account_origin": "bank_account_origin_id",
+    "bank_account_destination": "bank_account_destination_id",
+}
 
 
 def _build_transaction_query_filter(
@@ -35,20 +38,38 @@ def _build_transaction_query_filter(
     created_at_to: Optional[datetime] = None,
 ) -> Optional[QueryFilter]:
     """Construye QueryFilter para transacciones."""
-    filters = []
-    if status is not None:
-        filters.append(FilterSchema(field="status", value=status, operator=OperatorEnum.EQ))
-    if user_id is not None:
-        filters.append(FilterSchema(field="user_id", value=user_id, operator=OperatorEnum.EQ))
-    if bank_account_origin_id is not None:
-        filters.append(FilterSchema(field="bank_account_origin_id", value=bank_account_origin_id, operator=OperatorEnum.EQ))
-    if bank_account_destination_id is not None:
-        filters.append(FilterSchema(field="bank_account_destination_id", value=bank_account_destination_id, operator=OperatorEnum.EQ))
-    if created_at_from is not None:
-        filters.append(FilterSchema(field="created_at", value=created_at_from, operator=OperatorEnum.GTE))
-    if created_at_to is not None:
-        filters.append(FilterSchema(field="created_at", value=created_at_to, operator=OperatorEnum.LTE))
+    filter_specs = [
+        (status, "status", OperatorEnum.EQ),
+        (user_id, "user_id", OperatorEnum.EQ),
+        (bank_account_origin_id, "bank_account_origin_id", OperatorEnum.EQ),
+        (bank_account_destination_id, "bank_account_destination_id", OperatorEnum.EQ),
+        (created_at_from, "created_at", OperatorEnum.GTE),
+        (created_at_to, "created_at", OperatorEnum.LTE),
+    ]
+    filters = [
+        FilterSchema(field=field, value=val, operator=op)
+        for val, field, op in filter_specs
+        if val is not None
+    ]
     return QueryFilter(filters=filters) if filters else None
+
+
+def _cmd_to_entity_data(data: dict) -> dict:
+    """Convierte nombres de campos del cmd al modelo entity."""
+    return {
+        _CMD_TO_ENTITY.get(k, k): v
+        for k, v in data.items()
+        if k != "id"
+    }
+
+
+class GetTransactionByIdUseCase:
+    def __init__(self, repo: TransactionRepositoryInterface):
+        self.repo = repo
+
+    async def execute(self, transaction_id: UUID) -> Optional[TransactionReadDTO]:
+        entity = await self.repo.get(transaction_id)
+        return TransactionReadDTO.model_validate(entity) if entity else None
 
 
 class ListTransactionsUseCase:
@@ -81,24 +102,8 @@ class CreateTransactionUseCase:
         self.repo = repo
 
     async def execute(self, cmd: TransactionCreateCmd) -> TransactionReadDTO:
-        entity = Transaction(
-            bank_account_origin_id=cmd.bank_account_origin,
-            bank_account_destination_id=cmd.bank_account_destination,
-            user_id=cmd.user_id,
-            tax_rate_id=cmd.tax_rate_id,
-            commission_id=cmd.commission_id,
-            status=cmd.status,
-            origin_amount=cmd.origin_amount,
-            destination_amount=cmd.destination_amount,
-            code=cmd.code,
-            commission_result=cmd.commission_result,
-            total_to_send=cmd.total_to_send,
-            coupon_id=cmd.coupon_id,
-            send_date=cmd.send_date,
-            payment_date=cmd.payment_date,
-            send_voucher=cmd.send_voucher,
-            payment_voucher=cmd.payment_voucher,
-        )
+        entity_data = _cmd_to_entity_data(cmd.model_dump())
+        entity = Transaction(**entity_data)
         saved = await self.repo.add(entity)
         await self.repo.commit()
         await self.repo.refresh(saved)
@@ -113,38 +118,11 @@ class UpdateTransactionUseCase:
         entity = await self.repo.get(cmd.id)
         if not entity:
             return None
-        if cmd.bank_account_origin is not None:
-            entity.bank_account_origin_id = cmd.bank_account_origin
-        if cmd.bank_account_destination is not None:
-            entity.bank_account_destination_id = cmd.bank_account_destination
-        if cmd.user_id is not None:
-            entity.user_id = cmd.user_id
-        if cmd.tax_rate_id is not None:
-            entity.tax_rate_id = cmd.tax_rate_id
-        if cmd.commission_id is not None:
-            entity.commission_id = cmd.commission_id
-        if cmd.status is not None:
-            entity.status = cmd.status
-        if cmd.origin_amount is not None:
-            entity.origin_amount = cmd.origin_amount
-        if cmd.destination_amount is not None:
-            entity.destination_amount = cmd.destination_amount
-        if cmd.code is not None:
-            entity.code = cmd.code
-        if cmd.commission_result is not None:
-            entity.commission_result = cmd.commission_result
-        if cmd.total_to_send is not None:
-            entity.total_to_send = cmd.total_to_send
-        if cmd.coupon_id is not None:
-            entity.coupon_id = cmd.coupon_id
-        if cmd.send_date is not None:
-            entity.send_date = cmd.send_date
-        if cmd.payment_date is not None:
-            entity.payment_date = cmd.payment_date
-        if cmd.send_voucher is not None:
-            entity.send_voucher = cmd.send_voucher
-        if cmd.payment_voucher is not None:
-            entity.payment_voucher = cmd.payment_voucher
+
+        updates = _cmd_to_entity_data(cmd.model_dump(exclude_unset=True))
+        for attr, value in updates.items():
+            setattr(entity, attr, value)
+
         await self.repo.update(entity)
         await self.repo.commit()
         await self.repo.refresh(entity)
@@ -158,3 +136,70 @@ class DeleteTransactionUseCase:
     async def execute(self, transaction_id: UUID) -> None:
         await self.repo.delete(transaction_id)
         await self.repo.commit()
+
+
+class ImportTransactionsUseCase:
+    """Caso de uso para recibir archivo de importación. Valida formato y retorna metadata.
+    Usa CreateTransactionUseCase, CreateUserUseCase y CreateBankAccountUseCase para crear entidades al importar.
+    """
+
+    def __init__(
+        self,
+        create_transaction_uc: "CreateTransactionUseCase",
+        create_user_uc: "CreateUserUseCase",
+        create_bank_account_uc: "CreateBankAccountUseCase",
+    ):
+        self._create_transaction = create_transaction_uc
+        self._create_user = create_user_uc
+        self._create_bank_account = create_bank_account_uc
+
+    async def execute(self, body: ImportRequestCmd) -> ImportResponseDTO:
+        """Procesa la importación: por cada item crea user_origin+bank_account_origin, user_destination+bank_account_destination,
+        y transaction. Cada usuario se relaciona directamente con su bank_account.
+        """
+        from app.modules.transactions.application.schemas.bank_account_schema import BankAccountCreateCmd
+        from app.modules.users.application.schemas.user_schema import UserCreateCmd
+
+        created_users = 0
+        created_bank_accounts = 0
+        created_transactions = 0
+
+        for item in body.items:
+            # Emisor: user_origin + bank_account_origin (cada bank_account pertenece a su user)
+            user_origin_cmd = UserCreateCmd.model_validate(item.user_origin.user)
+            user_origin_dto = await self._create_user.execute(user_origin_cmd, profile_image=None)
+            user_origin_id = user_origin_dto.id
+            created_users += 1
+
+            bank_origin_data = item.user_origin.bank_account.model_dump()
+            bank_origin_data["user_id"] = user_origin_id
+            bank_origin_cmd = BankAccountCreateCmd.model_validate(bank_origin_data)
+            bank_origin_dto = await self._create_bank_account.execute(bank_origin_cmd)
+            created_bank_accounts += 1
+
+            # Receptor: user_destination + bank_account_destination
+            user_dest_cmd = UserCreateCmd.model_validate(item.user_destination.user)
+            user_dest_dto = await self._create_user.execute(user_dest_cmd, profile_image=None)
+            user_dest_id = user_dest_dto.id
+            created_users += 1
+
+            bank_dest_data = item.user_destination.bank_account.model_dump()
+            bank_dest_data["user_id"] = user_dest_id
+            bank_dest_cmd = BankAccountCreateCmd.model_validate(bank_dest_data)
+            bank_dest_dto = await self._create_bank_account.execute(bank_dest_cmd)
+            created_bank_accounts += 1
+
+            # Transaction: user_id = emisor (quien realiza la transacción)
+            txn_data = item.transaction.model_dump()
+            txn_data["user_id"] = user_origin_id
+            txn_data["bank_account_origin"] = bank_origin_dto.id
+            txn_data["bank_account_destination"] = bank_dest_dto.id
+            txn_cmd = TransactionCreateCmd.model_validate(txn_data)
+            await self._create_transaction.execute(txn_cmd)
+            created_transactions += 1
+
+        return ImportResponseDTO(
+            created_transactions=created_transactions,
+            created_users=created_users,
+            created_bank_accounts=created_bank_accounts,
+        )

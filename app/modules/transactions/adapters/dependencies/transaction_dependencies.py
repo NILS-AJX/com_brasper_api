@@ -1,8 +1,11 @@
 # app/modules/transactions/adapters/dependencies/transaction_dependencies.py
 """Inyección de dependencias del módulo transactions para las rutas."""
-from typing import Annotated
+from typing import Annotated, TYPE_CHECKING
 
 from fastapi import Depends
+
+if TYPE_CHECKING:
+    from app.modules.users.application.use_cases import CreateUserUseCase
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
@@ -14,12 +17,14 @@ from app.modules.transactions.infrastructure.repository import SQLAlchemyTransac
 from app.modules.transactions.infrastructure.bank_repository import SQLAlchemyBankRepository
 from app.modules.transactions.infrastructure.bank_account_repository import SQLAlchemyBankAccountRepository
 from app.modules.transactions.infrastructure.coupon_repository import SQLAlchemyCouponRepository
+from app.core.containers.users import create_user_uc
 from app.modules.transactions.application.use_cases import (
     GetTransactionByIdUseCase,
     ListTransactionsUseCase,
     CreateTransactionUseCase,
     UpdateTransactionUseCase,
     DeleteTransactionUseCase,
+    ImportTransactionsUseCase,
     GetBankByIdUseCase,
     ListBanksUseCase,
     ListBankNamesUseCase,
@@ -185,6 +190,21 @@ ListBankAccountsUseCaseDep = Annotated[ListBankAccountsUseCase, Depends(list_ban
 CreateBankAccountUseCaseDep = Annotated[CreateBankAccountUseCase, Depends(create_bank_account_uc)]
 UpdateBankAccountUseCaseDep = Annotated[UpdateBankAccountUseCase, Depends(update_bank_account_uc)]
 DeleteBankAccountUseCaseDep = Annotated[DeleteBankAccountUseCase, Depends(delete_bank_account_uc)]
+
+
+def import_transactions_uc(
+    create_transaction: Annotated[CreateTransactionUseCase, Depends(create_transaction_uc)],
+    create_user: Annotated["CreateUserUseCase", Depends(create_user_uc)],
+    create_bank_account: Annotated[CreateBankAccountUseCase, Depends(create_bank_account_uc)],
+) -> ImportTransactionsUseCase:
+    return ImportTransactionsUseCase(
+        create_transaction_uc=create_transaction,
+        create_user_uc=create_user,
+        create_bank_account_uc=create_bank_account,
+    )
+
+
+ImportTransactionsUseCaseDep = Annotated[ImportTransactionsUseCase, Depends(import_transactions_uc)]
 
 
 # Coupon

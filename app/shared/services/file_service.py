@@ -27,6 +27,7 @@ class FileType(Enum):
     HOME_BANNER = "home_banner"
     HOME_POPUP = "home_popup"
     TRANSACTION_VOUCHER = "transaction_vouchers"
+    DATA_IMPORT = "data_import"
 
 
 # Extensiones permitidas para imágenes

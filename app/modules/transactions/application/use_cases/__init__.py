@@ -5,6 +5,7 @@ from app.modules.transactions.application.use_cases.transaction_use_cases import
     CreateTransactionUseCase,
     UpdateTransactionUseCase,
     DeleteTransactionUseCase,
+    ImportTransactionsUseCase,
 )
 from app.modules.transactions.application.use_cases.bank_use_cases import (
     GetBankByIdUseCase,
@@ -36,6 +37,7 @@ __all__ = [
     "CreateTransactionUseCase",
     "UpdateTransactionUseCase",
     "DeleteTransactionUseCase",
+    "ImportTransactionsUseCase",
     "GetBankByIdUseCase",
     "ListBanksUseCase",
     "ListBankNamesUseCase",

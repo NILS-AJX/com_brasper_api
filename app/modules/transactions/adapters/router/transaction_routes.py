@@ -1,7 +1,8 @@
 # app/modules/transactions/adapters/router/transaction_routes.py
+"""Rutas para el módulo de transacciones."""
 import json
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, status
@@ -14,6 +15,8 @@ from app.modules.transactions.application.schemas import (
     TransactionCreateCmd,
     TransactionUpdateCmd,
     TransactionReadDTO,
+    ImportRequestCmd,
+    ImportResponseDTO,
 )
 from app.modules.transactions.adapters.dependencies import (
     GetTransactionByIdUseCaseDep,
@@ -21,9 +24,57 @@ from app.modules.transactions.adapters.dependencies import (
     CreateTransactionUseCaseDep,
     UpdateTransactionUseCaseDep,
     DeleteTransactionUseCaseDep,
+    ImportTransactionsUseCaseDep,
 )
 
 router = APIRouter(tags=["transactions"])
+
+# Constantes de mensajes de error
+MSG_TRANSACTION_NOT_FOUND = "Transacción no encontrada"
+MSG_INVALID_JSON = "JSON inválido"
+
+def _is_form_request(content_type: str) -> bool:
+    """Indica si el Content-Type corresponde a form-data."""
+    return "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type
+
+
+async def _parse_create_request(
+    request: Request,
+) -> Tuple[TransactionCreateCmd, Optional[UploadFile], Optional[UploadFile]]:
+    """Parsea el request y retorna (cmd, send_voucher, payment_voucher)."""
+    if _is_form_request(request.headers.get("content-type", "")):
+        form = await request.form()
+        return TransactionCreateCmd.from_form_data(form)
+    body = await request.json()
+    return TransactionCreateCmd.model_validate(body), None, None
+
+
+async def _parse_update_request(
+    request: Request,
+) -> Tuple[TransactionUpdateCmd, Optional[UploadFile], Optional[UploadFile]]:
+    """Parsea el request y retorna (cmd, send_voucher, payment_voucher)."""
+    if _is_form_request(request.headers.get("content-type", "")):
+        form = await request.form()
+        return TransactionUpdateCmd.from_form_data(form)
+    body = await request.json()
+    return TransactionUpdateCmd.model_validate(body), None, None
+
+
+async def _apply_vouchers(
+    cmd: Union[TransactionCreateCmd, TransactionUpdateCmd],
+    send_file: Optional[UploadFile],
+    payment_file: Optional[UploadFile],
+) -> None:
+    """Guarda los vouchers y asigna las rutas al cmd."""
+    if send_file and send_file.filename:
+        cmd.send_voucher = await save_transaction_voucher(send_file, "send")
+    if payment_file and payment_file.filename:
+        cmd.payment_voucher = await save_transaction_voucher(payment_file, "payment")
+
+
+# =============================================================================
+# Rutas
+# =============================================================================
 
 
 @router.get("/", response_model=List[TransactionReadDTO])
@@ -36,7 +87,7 @@ async def list_transactions(
     created_at_from: Optional[datetime] = Query(None, description="Filtro: transacciones desde esta fecha (ISO)"),
     created_at_to: Optional[datetime] = Query(None, description="Filtro: transacciones hasta esta fecha (ISO)"),
 ):
-    """Lista transacciones. Filtros: status, user_id, bank_account_origin_id, bank_account_destination_id, created_at_from, created_at_to."""
+    """Lista transacciones con filtros opcionales."""
     return await use_case.execute(
         status=status,
         user_id=user_id,
@@ -49,60 +100,11 @@ async def list_transactions(
 
 @router.get("/{transaction_id}", response_model=TransactionReadDTO)
 async def get_transaction_by_id(transaction_id: UUID, use_case: GetTransactionByIdUseCaseDep):
+    """Obtiene una transacción por ID."""
     entity = await use_case.execute(transaction_id)
     if not entity:
-        raise HTTPException(status_code=404, detail="Transacción no encontrada")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MSG_TRANSACTION_NOT_FOUND)
     return entity
-
-
-def _is_form_request(content_type: str) -> bool:
-    return "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type
-
-
-async def _parse_create_request(
-    request: Request,
-) -> tuple[TransactionCreateCmd, Optional[UploadFile], Optional[UploadFile]]:
-    content_type = request.headers.get("content-type", "")
-    if _is_form_request(content_type):
-        form = await request.form()
-        from app.modules.transactions.application.schemas.transaction_schema import (
-            _parse_optional_datetime,
-            _parse_optional_float,
-            _parse_optional_uuid,
-        )
-        from app.modules.transactions.domain.enums import TransactionStatus
-        cmd = TransactionCreateCmd(
-            bank_account_origin=UUID(form.get("bank_account_origin", "")),
-            bank_account_destination=UUID(form.get("bank_account_destination", "")),
-            user_id=UUID(form.get("user_id", "")),
-            tax_rate_id=UUID(form.get("tax_rate_id", "")),
-            commission_id=UUID(form.get("commission_id", "")),
-            status=TransactionStatus(form.get("status", "pending") or "pending"),
-            origin_amount=float(form.get("origin_amount", 0)),
-            destination_amount=float(form.get("destination_amount", 0)),
-            code=form.get("code", ""),
-            commission_result=_parse_optional_float(
-                form.get("commission_result") or form.get("resultado_comision")
-            ),
-            total_to_send=_parse_optional_float(
-                form.get("total_to_send") or form.get("total_a_enviar")
-            ),
-            coupon_id=_parse_optional_uuid(form.get("coupon_id")),
-            send_date=_parse_optional_datetime(form.get("send_date")),
-            payment_date=_parse_optional_datetime(form.get("payment_date")),
-            send_voucher=None,
-            payment_voucher=None,
-        )
-        send_f = form.get("send_voucher") if "send_voucher" in form else None
-        pay_f = form.get("payment_voucher") if "payment_voucher" in form else None
-        if send_f and hasattr(send_f, "filename") and not send_f.filename:
-            send_f = None
-        if pay_f and hasattr(pay_f, "filename") and not pay_f.filename:
-            pay_f = None
-        return cmd, send_f, pay_f
-    body = await request.json()
-    cmd = TransactionCreateCmd.model_validate(body)
-    return cmd, None, None
 
 
 @router.post(
@@ -110,53 +112,23 @@ async def _parse_create_request(
     response_model=TransactionReadDTO,
     status_code=status.HTTP_201_CREATED,
     summary="Create Transaction",
-    responses={201: {"description": "Transacción creada"}, 400: {"description": "Datos inválidos"}},
-    openapi_extra={
-        "requestBody": {
-            "required": True,
-            "content": {
-                "application/json": {
-                    "schema": {"$ref": "#/components/schemas/TransactionCreateCmd"},
-                    "example": {
-                        "bank_account_origin": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                        "bank_account_destination": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                        "user_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                        "tax_rate_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                        "commission_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                        "status": "pending",
-                        "origin_amount": 100.0,
-                        "destination_amount": 95.0,
-                        "code": "TXN-001",
-                        "commission_result": 5.0,
-                        "total_to_send": 100.0,
-                    },
-                },
-                "multipart/form-data": {
-                    "schema": {"$ref": "#/components/schemas/TransactionCreateCmd"},
-                },
-            },
-        },
+    responses={
+        201: {"description": "Transacción creada"},
+        400: {"description": "Datos inválidos"},
+        422: {"description": "Error de validación"},
     },
+    openapi_extra={"requestBody": TransactionCreateCmd.openapi_request_body()},
 )
 async def create_transaction(request: Request, use_case: CreateTransactionUseCaseDep):
     """Crea transacción. Acepta JSON o form-data (multipart)."""
     try:
         cmd, send_voucher_file, payment_voucher_file = await _parse_create_request(request)
-        if send_voucher_file and send_voucher_file.filename:
-            cmd.send_voucher = await save_transaction_voucher(send_voucher_file, "send")
-        if payment_voucher_file and payment_voucher_file.filename:
-            cmd.payment_voucher = await save_transaction_voucher(payment_voucher_file, "payment")
+        await _apply_vouchers(cmd, send_voucher_file, payment_voucher_file)
         return await use_case.execute(cmd)
     except json.JSONDecodeError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"JSON inválido: {e}",
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{MSG_INVALID_JSON}: {e}")
     except ValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=e.errors(),
-        )
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.errors())
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -166,71 +138,58 @@ async def create_transaction(request: Request, use_case: CreateTransactionUseCas
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-async def _parse_update_request(
-    request: Request,
-) -> tuple[TransactionUpdateCmd, Optional[UploadFile], Optional[UploadFile]]:
-    content_type = request.headers.get("content-type", "")
-    if _is_form_request(content_type):
-        form = await request.form()
-        from app.modules.transactions.application.schemas.transaction_schema import (
-            _parse_optional_datetime,
-            _parse_optional_float,
-            _parse_optional_uuid,
-        )
-        from app.modules.transactions.domain.enums import TransactionStatus
-
-        cmd = TransactionUpdateCmd(
-            id=UUID(form.get("id", "")),
-            bank_account_origin=_parse_optional_uuid(form.get("bank_account_origin")),
-            bank_account_destination=_parse_optional_uuid(form.get("bank_account_destination")),
-            user_id=_parse_optional_uuid(form.get("user_id")),
-            tax_rate_id=_parse_optional_uuid(form.get("tax_rate_id")),
-            commission_id=_parse_optional_uuid(form.get("commission_id")),
-            status=TransactionStatus(form["status"]) if form.get("status") else None,
-            origin_amount=_parse_optional_float(form.get("origin_amount")),
-            destination_amount=_parse_optional_float(form.get("destination_amount")),
-            code=form.get("code"),
-            commission_result=_parse_optional_float(
-                form.get("commission_result") or form.get("resultado_comision")
-            ),
-            total_to_send=_parse_optional_float(
-                form.get("total_to_send") or form.get("total_a_enviar")
-            ),
-            coupon_id=_parse_optional_uuid(form.get("coupon_id")),
-            send_date=_parse_optional_datetime(form.get("send_date")),
-            payment_date=_parse_optional_datetime(form.get("payment_date")),
-            send_voucher=None,
-            payment_voucher=None,
-        )
-        send_f = form.get("send_voucher") if "send_voucher" in form else None
-        pay_f = form.get("payment_voucher") if "payment_voucher" in form else None
-        if send_f and hasattr(send_f, "filename") and not send_f.filename:
-            send_f = None
-        if pay_f and hasattr(pay_f, "filename") and not pay_f.filename:
-            pay_f = None
-        return cmd, send_f, pay_f
-    body = await request.json()
-    cmd = TransactionUpdateCmd.model_validate(body)
-    return cmd, None, None
-
-
-@router.put("/", response_model=TransactionReadDTO)
+@router.put(
+    "/",
+    response_model=TransactionReadDTO,
+    responses={
+        200: {"description": "Transacción actualizada"},
+        400: {"description": "Datos inválidos"},
+        404: {"description": "Transacción no encontrada"},
+    },
+)
 async def update_transaction(request: Request, use_case: UpdateTransactionUseCaseDep):
     """Actualiza transacción. Acepta JSON o form-data (multipart)."""
     try:
         cmd, send_voucher_file, payment_voucher_file = await _parse_update_request(request)
-        if send_voucher_file and send_voucher_file.filename:
-            cmd.send_voucher = await save_transaction_voucher(send_voucher_file, "send")
-        if payment_voucher_file and payment_voucher_file.filename:
-            cmd.payment_voucher = await save_transaction_voucher(payment_voucher_file, "payment")
+        await _apply_vouchers(cmd, send_voucher_file, payment_voucher_file)
         entity = await use_case.execute(cmd)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     if not entity:
-        raise HTTPException(status_code=404, detail="Transacción no encontrada")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MSG_TRANSACTION_NOT_FOUND)
     return entity
 
 
-@router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{transaction_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete Transaction",
+)
 async def delete_transaction(transaction_id: UUID, use_case: DeleteTransactionUseCaseDep):
+    """Elimina una transacción por ID."""
     await use_case.execute(transaction_id)
+
+
+@router.post(
+    "/import/",
+    response_model=ImportResponseDTO,
+    status_code=status.HTTP_201_CREATED,
+    summary="Importar datos (JSON)",
+    responses={
+        201: {"description": "Importación completada"},
+        400: {"description": "Datos inválidos"},
+    },
+)
+async def import_data(use_case: ImportTransactionsUseCaseDep, body: ImportRequestCmd):
+    """Recibe JSON con datos parseados. El frontend parsea el archivo localmente y envía los datos."""
+    try:
+        return await use_case.execute(body)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.errors())
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Referencia inválida en los datos importados",
+        )
