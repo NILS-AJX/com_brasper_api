@@ -1,6 +1,8 @@
 # Base de datos: por defecto usa el contenedor "db". Para usar la misma DB que en local,
 # en .env pon POSTGRES_HOST=IP_DE_TU_DB (ej. 213.199.44.2 o host.docker.internal si está en el host).
 
+name: com_brasper
+
 services:
   db:
     image: postgres:16-alpine
