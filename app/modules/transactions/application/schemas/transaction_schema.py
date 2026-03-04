@@ -327,14 +327,13 @@ class BankAccountImportPayload(BaseModel):
 
 
 class TransactionImportPayload(BaseModel):
-    """Campos de transacción para importación (sin user_id ni cuentas; se asignan al crear)."""
+    """Campos de transacción para importación (sin user_id, cuentas ni code; se asignan/autogeneran al crear)."""
 
     tax_rate_id: UUID
     commission_id: UUID
     status: TransactionStatus = TransactionStatus.pending
     origin_amount: float
     destination_amount: float
-    code: str
     commission_result: Optional[float] = Field(
         default=None,
         validation_alias=AliasChoices("commission_result", "resultado_comision"),
@@ -410,7 +409,6 @@ class ImportRequestCmd(BaseModel):
                             "commission_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                             "origin_amount": 100.0,
                             "destination_amount": 95.0,
-                            "code": "TXN-001",
                         },
                     }
                 ]

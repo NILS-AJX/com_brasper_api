@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -189,11 +189,12 @@ class ImportTransactionsUseCase:
             bank_dest_dto = await self._create_bank_account.execute(bank_dest_cmd)
             created_bank_accounts += 1
 
-            # Transaction: user_id = emisor (quien realiza la transacción)
+            # Transaction: user_id = emisor, code = autogenerado
             txn_data = item.transaction.model_dump()
             txn_data["user_id"] = user_origin_id
             txn_data["bank_account_origin"] = bank_origin_dto.id
             txn_data["bank_account_destination"] = bank_dest_dto.id
+            txn_data["code"] = f"TXN-{uuid4().hex[:12].upper()}"
             txn_cmd = TransactionCreateCmd.model_validate(txn_data)
             await self._create_transaction.execute(txn_cmd)
             created_transactions += 1
