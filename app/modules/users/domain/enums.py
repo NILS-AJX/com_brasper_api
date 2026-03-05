@@ -19,6 +19,7 @@ class DocumentType(str, enum.Enum):
     ce = "ce"           # Cédula de extranjería
     ruc = "ruc"
     passport = "passport"
+    cpf = "cpf"
     other = "other"
 
 
